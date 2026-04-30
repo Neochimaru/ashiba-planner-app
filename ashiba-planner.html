@@ -1,0 +1,3581 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>足場プランナー</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+  :root {
+    --bg:#1a1e2a;--surface:#222736;--surface2:#2a3045;
+    --accent:#00d4ff;--accent2:#f4a100;
+    --sep:#2a3555;--text:#c8d0e0;--text-dim:#5a6480;
+    --radius:10px;--danger:#e03e3e;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);height:100dvh;display:flex;flex-direction:column;overflow:hidden;}
+
+  header{padding:8px 14px 6px;background:var(--surface);border-bottom:1px solid var(--sep);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+  header h1{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--accent);line-height:1;}
+  header .sub{font-size:9px;color:var(--text-dim);margin-top:1px;}
+
+  .toolbar{display:flex;align-items:center;gap:5px;padding:6px 10px;background:var(--surface);border-bottom:1px solid var(--sep);flex-shrink:0;overflow-x:auto;scrollbar-width:none;}
+  .toolbar::-webkit-scrollbar{display:none;}
+  .tsep{width:1px;height:18px;background:var(--sep);flex-shrink:0;margin:0 2px;}
+  .tlabel{font-size:10px;color:var(--text-dim);flex-shrink:0;white-space:nowrap;}
+  .tbtn{flex-shrink:0;padding:5px 11px;border-radius:14px;border:1px solid var(--sep);background:transparent;color:var(--text-dim);font-size:11px;font-family:'Noto Sans JP',sans-serif;font-weight:500;cursor:pointer;transition:all 0.15s;white-space:nowrap;}
+  .tbtn.at{background:var(--accent);border-color:var(--accent);color:#000;font-weight:700;}
+  .tbtn.et{background:var(--danger);border-color:var(--danger);color:#fff;font-weight:700;}
+  .tbtn.mt{background:#22cc88;border-color:#22cc88;color:#000;font-weight:700;}
+  .tbtn.mvt{background:#ff9900;border-color:#ff9900;color:#000;font-weight:700;}
+  .tbtn.bkt{background:#ff8c00;border-color:#ff8c00;color:#000;font-weight:700;}
+  .tbtn.ht{background:#00d4ff;border-color:#00d4ff;color:#000;font-weight:700;}
+  .tbtn.disabled{opacity:0.3;pointer-events:none;}
+  .tbtn.aw{background:#a259ff;border-color:#a259ff;color:#fff;font-weight:700;}
+  .tbtn.as{background:var(--accent2);border-color:var(--accent2);color:#000;font-weight:700;}
+
+  .canvas-wrap{flex:1;overflow:auto;background:#0a0c12;padding:6px;}
+  canvas{display:block;touch-action:none;cursor:crosshair;}
+
+  .stat-bar{display:flex;gap:10px;padding:5px 12px;background:var(--surface2);border-top:1px solid var(--sep);font-size:11px;color:var(--text-dim);flex-shrink:0;}
+  .stat-item span{color:var(--accent);font-weight:700;}
+
+  .controls{background:var(--surface);border-top:1px solid var(--sep);flex-shrink:0;}
+  .ctrl-row{display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid var(--sep);}
+  .ctrl-lbl{font-size:11px;color:var(--text-dim);white-space:nowrap;min-width:32px;}
+  .seg-btn{padding:4px 10px;border-radius:12px;border:1px solid var(--sep);background:transparent;color:var(--text-dim);font-size:11px;font-family:'Noto Sans JP',sans-serif;font-weight:500;cursor:pointer;transition:all 0.15s;}
+  .seg-btn.active{border-color:var(--accent2);color:var(--accent2);font-weight:700;background:#f4a10015;}
+  .dan-counter{display:flex;align-items:center;gap:6px;}
+  .dan-btn{width:26px;height:26px;border-radius:50%;border:none;font-size:16px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .dan-btn.minus{background:var(--surface2);color:var(--text);}
+  .dan-btn.plus{background:var(--accent2);color:#000;}
+  .dan-val{font-size:18px;font-weight:700;color:var(--accent2);min-width:22px;text-align:center;}
+  .btn-row{display:flex;gap:8px;padding:7px 12px;}
+  .calc-btn{flex:1;padding:11px;background:var(--accent2);color:#000;border:none;border-radius:var(--radius);font-size:13px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;}
+  .calc-btn:active{background:#d98e00;}
+  .clear-btn{padding:11px 14px;background:transparent;color:var(--danger);border:1px solid var(--danger);border-radius:var(--radius);font-size:12px;font-weight:600;font-family:'Noto Sans JP',sans-serif;cursor:pointer;}
+
+  .toolbar2{border-top:none;}
+  .legend-inline{display:flex;gap:8px;align-items:center;flex-shrink:0;}
+  .legend-item{display:flex;align-items:center;gap:3px;font-size:10px;color:var(--text-dim);}
+  .ldot{width:9px;height:9px;border-radius:2px;border:1.5px solid;flex-shrink:0;}
+
+  /* メニューボタン */
+  .menu-btn{background:transparent;border:1px solid var(--sep);color:var(--text);font-size:18px;width:36px;height:36px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .menu-btn:active{background:var(--surface2);}
+
+  /* メニューパネル */
+  .menu-overlay{display:none;position:fixed;inset:0;background:#00000077;z-index:300;}
+  .menu-overlay.visible{display:block;}
+  .menu-panel{position:absolute;top:0;right:0;width:min(320px,90vw);height:100%;background:var(--surface);display:flex;flex-direction:column;box-shadow:-4px 0 20px #0008;}
+  .menu-header{display:flex;justify-content:space-between;align-items:center;padding:16px;border-bottom:1px solid var(--sep);flex-shrink:0;}
+  .menu-title{font-size:16px;font-weight:700;color:var(--text);}
+  .menu-close{background:transparent;border:1px solid var(--sep);color:var(--text);font-size:18px;width:32px;height:32px;border-radius:50%;cursor:pointer;}
+  .menu-tabs{display:flex;border-bottom:1px solid var(--sep);flex-shrink:0;overflow-x:auto;scrollbar-width:none;}
+  .menu-tabs::-webkit-scrollbar{display:none;}
+  .menu-tab{flex-shrink:0;padding:10px 10px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text-dim);font-size:12px;font-family:'Noto Sans JP',sans-serif;font-weight:500;cursor:pointer;transition:all 0.15s;white-space:nowrap;}
+  .menu-tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:700;}
+
+  /* バージョン */
+  .version-badge{display:inline-block;background:var(--accent);color:#000;font-size:13px;font-weight:700;padding:6px 14px;border-radius:20px;margin-bottom:4px;}
+  .update-list{display:flex;flex-direction:column;gap:16px;}
+  .update-item{background:var(--surface2);border-radius:10px;padding:14px;}
+  .update-ver{font-size:13px;font-weight:700;color:var(--accent);margin-bottom:2px;}
+  .update-date{font-size:11px;color:var(--text-dim);margin-bottom:8px;}
+  .update-notes{display:flex;flex-direction:column;gap:4px;}
+  .update-note{font-size:13px;color:var(--text);}
+
+  /* プライバシー */
+  .privacy-text{display:flex;flex-direction:column;gap:16px;}
+  .privacy-section{background:var(--surface2);border-radius:10px;padding:14px;}
+  .privacy-heading{font-size:13px;font-weight:700;color:var(--accent2);margin-bottom:6px;}
+  .privacy-body{font-size:12px;color:var(--text);line-height:1.7;}
+
+  /* お問い合わせ */
+  .backup-import-btn{display:block;width:100%;padding:12px;background:var(--surface2);color:var(--text);border:1px solid var(--sep);border-radius:8px;font-size:13px;font-family:'Noto Sans JP',sans-serif;cursor:pointer;text-align:center;}
+  .backup-import-btn:active{opacity:0.8;}
+
+  /* 集計モーダル */
+  .shuukei-overlay{display:none;position:fixed;inset:0;background:#000000bb;z-index:400;align-items:center;justify-content:center;}
+  .shuukei-overlay.visible{display:flex;}
+  .shuukei-modal{background:var(--surface);border-radius:16px;width:95vw;max-width:500px;max-height:85dvh;display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--sep);}
+  .shuukei-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--sep);flex-shrink:0;}
+  .shuukei-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--accent);}
+  .shuukei-body{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:16px;}
+  .shuukei-section{background:var(--surface2);border-radius:10px;padding:12px;}
+  .shuukei-table-wrap{overflow-x:auto;margin-top:8px;}
+  .shuukei-table{width:100%;border-collapse:collapse;font-size:13px;}
+  .shuukei-table th{background:var(--surface);color:var(--text-dim);font-weight:600;padding:8px 10px;text-align:center;border-bottom:1px solid var(--sep);}
+  .shuukei-table td{padding:8px 10px;text-align:center;border-bottom:1px solid var(--sep);color:var(--text);}
+  .shuukei-table tr:last-child td{border-bottom:none;}
+  .shuukei-table input{background:var(--surface);border:1px solid var(--sep);border-radius:6px;padding:4px 8px;color:var(--text);font-size:13px;width:70px;text-align:center;font-family:'Noto Sans JP',sans-serif;}
+  .shuukei-table input:focus{border-color:var(--accent);outline:none;}
+  .shuukei-result-val{color:var(--accent2);font-weight:700;font-size:15px;}
+  .zoom-fab{position:fixed;right:12px;bottom:80px;display:flex;flex-direction:column;align-items:center;gap:4px;z-index:100;}
+  .zoom-fab-btn{width:44px;height:44px;border-radius:50%;border:1px solid var(--sep);background:var(--surface);color:var(--text);font-size:20px;font-weight:700;box-shadow:0 2px 8px #0006;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .zoom-fab-btn:active{opacity:0.7;}
+  .zoom-fab-label{font-size:10px;color:var(--text-dim);background:var(--surface);padding:2px 6px;border-radius:8px;border:1px solid var(--sep);}
+  .contact-desc{font-size:13px;color:var(--text);line-height:1.7;}
+  textarea.calc-input{width:100%;background:var(--surface2);border:1px solid var(--sep);border-radius:8px;padding:12px 14px;color:var(--text);font-size:14px;font-family:'Noto Sans JP',sans-serif;outline:none;}
+  textarea.calc-input:focus{border-color:var(--accent);}
+  .feedback-list{display:flex;flex-direction:column;gap:8px;}
+  .feedback-item{background:var(--surface2);border-radius:8px;padding:12px;font-size:13px;color:var(--text);}
+
+  .tbtn.bdt{background:#4488ff;border-color:#4488ff;color:#fff;font-weight:700;}
+  .tbtn.bd-active{background:#ff8c00;border-color:#ff8c00;color:#000;font-weight:700;}
+  .board-angle-label{font-size:12px;color:var(--accent);min-width:36px;text-align:center;font-weight:700;}
+  .board-slider{flex:1;min-width:80px;max-width:160px;accent-color:var(--accent);}
+  .memo-panel{display:flex;align-items:center;gap:8px;padding:6px 12px;background:#1a2a1a;border-bottom:2px solid #22cc88;flex-shrink:0;flex-wrap:wrap;}
+
+  /* 建地調整パネル */
+  .kenchi-panel{display:flex;align-items:center;gap:8px;padding:6px 12px;background:#1a1a2a;border-bottom:2px solid #a259ff;flex-shrink:0;flex-wrap:wrap;}
+
+  /* 離れパネル */
+  .hanare-panel{display:flex;align-items:center;gap:8px;padding:6px 12px;background:#1a2a3a;border-bottom:2px solid #00d4ff;flex-shrink:0;flex-wrap:wrap;}
+  .hanare-title{font-size:11px;color:#00d4ff;font-weight:700;white-space:nowrap;}
+  .hanare-scope-row{display:flex;gap:4px;}
+  .hanare-scope-btn{padding:4px 10px;border-radius:8px;border:1px solid #00d4ff44;background:transparent;color:var(--text-dim);font-size:11px;font-family:'Noto Sans JP',sans-serif;cursor:pointer;white-space:nowrap;}
+  .hanare-scope-btn.active{background:#00d4ff;color:#000;font-weight:700;border-color:#00d4ff;}
+  .hanare-quick{display:flex;gap:6px;}
+  .hanare-q-btn{padding:6px 10px;background:#00d4ff22;color:#00d4ff;border:1px solid #00d4ff;border-radius:8px;font-size:12px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;}
+  .hanare-input-row{display:flex;gap:6px;align-items:center;}
+  .hanare-input{width:80px;background:var(--surface2);border:1px solid var(--sep);border-radius:8px;padding:6px 10px;color:var(--text);font-size:16px;font-family:'Noto Sans JP',sans-serif;outline:none;}
+  .hanare-apply-btn{padding:6px 14px;background:#00d4ff;color:#000;border:none;border-radius:8px;font-size:12px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;}
+  .hanare-cancel-btn{padding:6px 10px;background:transparent;color:var(--danger);border:1px solid var(--danger);border-radius:8px;font-size:12px;cursor:pointer;}
+  .keisan-display{font-size:40px;font-weight:300;color:var(--text);text-align:right;padding:8px 4px 0;min-height:56px;word-break:break-all;line-height:1.2;}
+  .keisan-sub{font-size:16px;color:var(--text-dim);text-align:right;padding:0 4px 8px;min-height:24px;}
+  .keisan-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px;}
+  .kbtn{padding:0;height:60px;border:none;border-radius:50%;font-size:20px;font-weight:500;cursor:pointer;font-family:'Noto Sans JP',sans-serif;transition:opacity 0.1s;background:#333a4d;color:var(--text);}
+  .kbtn:active{opacity:0.7;}
+  .kbtn.func{background:#636e7e;color:#fff;}
+  .kbtn.op{background:var(--accent2);color:#000;font-weight:700;}
+  .kbtn.eq{background:var(--accent2);color:#000;font-weight:700;}
+  .kbtn.zero{border-radius:30px;grid-column:span 2;text-align:left;padding-left:22px;}
+  .menu-content{flex:1;overflow-y:auto;padding:16px;}
+  .menu-sec-title{font-size:11px;color:var(--text-dim);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;}
+
+  /* 色設定 */
+  .color-row-wrap{border-bottom:1px solid var(--sep);padding:12px 0;}
+  .color-row-wrap:last-child{border-bottom:none;}
+  .color-row-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .color-row-label{font-size:14px;color:var(--text);font-weight:600;}
+  .color-cur-dot{font-size:11px;padding:3px 10px;border-radius:12px;border:2px solid;color:#000;font-weight:700;}
+  .cgroups{display:flex;flex-direction:column;gap:6px;}
+  .cgroup{display:flex;align-items:center;gap:6px;}
+  .cgroup-label{font-size:10px;color:var(--text-dim);min-width:52px;flex-shrink:0;}
+  .cgroup-swatches{display:flex;gap:6px;}
+  .cswatch{width:30px;height:30px;border-radius:8px;border:2px solid transparent;cursor:pointer;transition:transform 0.1s;flex-shrink:0;}
+  .cswatch:active{transform:scale(0.85);}
+  .cswatch.sel{border-color:#fff;transform:scale(1.15);}
+
+  /* 人工計算 */
+  .calc-group{margin-bottom:14px;}
+  .calc-label{font-size:12px;color:var(--text-dim);margin-bottom:6px;font-weight:600;}
+  .calc-input{width:100%;background:var(--surface2);border:1px solid var(--sep);border-radius:8px;padding:12px 14px;color:var(--text);font-size:16px;font-family:'Noto Sans JP',sans-serif;outline:none;}
+  .calc-input:focus{border-color:var(--accent);}
+  .ratio-row{display:flex;align-items:center;gap:12px;background:var(--surface2);border-radius:10px;padding:12px 14px;}
+  .ratio-item{display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .ratio-label{font-size:12px;font-weight:600;white-space:nowrap;}
+  .ratio-counter{display:flex;align-items:center;gap:8px;}
+  .ratio-btn{width:32px;height:32px;border-radius:50%;border:none;background:var(--surface);color:var(--text);font-size:18px;font-weight:bold;cursor:pointer;flex-shrink:0;}
+  .ratio-val{font-size:24px;font-weight:700;color:var(--text);min-width:24px;text-align:center;}
+  .ratio-val-fixed{font-size:24px;font-weight:700;color:#00d4ff;text-align:center;white-space:nowrap;}
+  .ratio-sep{font-size:20px;color:var(--text-dim);font-weight:700;white-space:nowrap;}
+  .calc-result-box{background:var(--surface2);border-radius:12px;padding:16px;margin:16px 0;border:1px solid var(--sep);}
+  .calc-result-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;}
+  .calc-result-label{font-size:13px;color:var(--text-dim);}
+  .calc-result-value{font-size:18px;font-weight:700;color:var(--accent);}
+  .calc-result-divider{height:1px;background:var(--sep);margin:6px 0;}
+  .highlight-green .calc-result-label{color:#22cc88;}
+  .highlight-green .calc-result-value{color:#22cc88;font-size:22px;}
+  .highlight-blue .calc-result-label{color:#00d4ff;}
+  .highlight-blue .calc-result-value{color:#00d4ff;font-size:22px;}
+  .calc-reset-btn{width:100%;padding:10px;background:transparent;color:var(--danger);border:1px solid var(--danger);border-radius:8px;font-size:13px;font-family:'Noto Sans JP',sans-serif;cursor:pointer;}
+  .reflect-btn{width:100%;padding:12px;background:#22cc88;color:#000;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;margin-top:8px;}
+
+  /* 人工管理 */
+  .prog-section{margin-bottom:16px;}
+  .prog-site-row{display:flex;gap:8px;align-items:center;}
+  .prog-select{flex:1;background:var(--surface2);border:1px solid var(--sep);border-radius:8px;padding:10px 12px;color:var(--text);font-size:14px;font-family:'Noto Sans JP',sans-serif;outline:none;}
+  .prog-add-btn{padding:10px 14px;background:var(--accent);color:#000;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;white-space:nowrap;}
+  .prog-add-form{margin-top:10px;padding:12px;background:var(--surface2);border-radius:10px;}
+  .prog-summary{background:var(--surface2);border-radius:12px;padding:14px;margin-bottom:14px;}
+  .prog-summary-name{font-size:16px;font-weight:700;color:var(--text);margin-bottom:12px;}
+  .prog-summary-row{display:flex;gap:8px;margin-bottom:12px;}
+  .prog-summary-item{flex:1;background:var(--surface);border-radius:8px;padding:10px;text-align:center;}
+  .prog-summary-label{font-size:10px;color:var(--text-dim);margin-bottom:4px;}
+  .prog-summary-val{font-size:18px;font-weight:700;color:var(--accent);}
+  .prog-summary-val.used{color:var(--accent2);}
+  .prog-summary-val.remain{color:#22cc88;}
+  .prog-bar-wrap{height:10px;background:var(--surface);border-radius:5px;overflow:hidden;margin-bottom:4px;}
+  .prog-bar{height:100%;background:var(--accent2);border-radius:5px;transition:width 0.3s;}
+  .prog-bar-label{font-size:11px;color:var(--text-dim);text-align:right;}
+  .prog-date-row{display:flex;gap:6px;align-items:center;}
+  .prog-history-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--sep);}
+  .prog-history-item:last-child{border-bottom:none;}
+  .prog-history-date{font-size:13px;color:var(--text);}
+  .prog-history-val{font-size:16px;font-weight:700;color:var(--accent2);}
+  .prog-history-del{background:transparent;border:none;color:var(--danger);font-size:16px;cursor:pointer;padding:4px 8px;}
+  .info-list{display:flex;flex-direction:column;gap:8px;}
+  .info-row{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text);}
+  .info-row span{color:var(--accent);font-weight:700;min-width:52px;flex-shrink:0;}
+
+  /* 凡例info */
+  .legend-info-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--sep);font-size:13px;color:var(--text);}
+  .legend-info-row:last-child{border-bottom:none;}
+  .legend-info-dot{width:20px;height:20px;border-radius:4px;border:2px solid;flex-shrink:0;}
+
+  .modal-overlay{display:none;position:fixed;inset:0;background:#00000099;z-index:100;align-items:flex-end;}
+  .modal-overlay.visible{display:flex;}
+  .modal{width:100%;max-height:80dvh;background:var(--surface);border-radius:16px 16px 0 0;overflow-y:auto;border-top:2px solid var(--accent);}
+  .modal-header{position:sticky;top:0;background:var(--surface);padding:12px 16px 8px;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--sep);}
+  .modal-title{font-size:13px;color:var(--accent);font-weight:700;letter-spacing:1px;}
+  .modal-sub{font-size:11px;color:var(--text-dim);margin-top:2px;}
+  .modal-close{width:30px;height:30px;border-radius:50%;border:1px solid var(--sep);background:var(--surface2);color:var(--text);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .result-sec{padding:8px 16px 2px;font-size:10px;color:var(--text-dim);font-weight:700;letter-spacing:1px;text-transform:uppercase;border-top:1px solid var(--sep);}
+  .result-row{display:flex;justify-content:space-between;align-items:center;padding:9px 16px;border-bottom:1px solid #ffffff08;}
+  .result-row:last-child{border-bottom:none;}
+  .rname{font-size:14px;color:var(--text);}
+  .rqty{font-size:20px;font-weight:700;color:var(--accent2);}
+  .runit{font-size:11px;color:var(--text-dim);margin-left:2px;}
+  /* 保存・読み込み */
+  .save-input-row{display:flex;flex-direction:column;gap:8px;margin-bottom:4px;}
+  .save-input{flex:1;background:var(--surface2);border:1px solid var(--sep);border-radius:8px;padding:10px 12px;color:var(--text);font-size:14px;font-family:'Noto Sans JP',sans-serif;outline:none;}
+  .save-input:focus{border-color:var(--accent);}
+  .save-btn{padding:10px 16px;background:var(--accent);color:#000;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;white-space:nowrap;}
+  .save-btn:active{background:#00aad4;}
+  .saved-item{background:var(--surface2);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .saved-item-info{flex:1;min-width:0;}
+  .saved-item-title{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .saved-item-date{font-size:11px;color:var(--text-dim);margin-top:2px;}
+  .saved-item-blocks{font-size:11px;color:var(--accent);margin-top:1px;}
+  .saved-item-btns{display:flex;gap:6px;flex-shrink:0;}
+  .load-btn{padding:6px 12px;background:var(--accent2);color:#000;border:none;border-radius:6px;font-size:12px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;}
+  .del-btn{padding:6px 10px;background:transparent;color:var(--danger);border:1px solid var(--danger);border-radius:6px;font-size:12px;cursor:pointer;}
+
+</style>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-CCKJX550ER"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-CCKJX550ER');
+</script>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>足場プランナー</h1>
+    <div class="sub" id="header-sub">幅: 610mm / スパン: 1829mm / 縦置き</div>
+  </div>
+  <button class="menu-btn" onclick="openMenu()">☰</button>
+</header>
+
+<!-- メニューパネル（右からスライド） -->
+<div class="menu-overlay" id="menu-overlay" onclick="closeMenuOverlay(event)">
+  <div class="menu-panel" onclick="event.stopPropagation()">
+    <div class="menu-header">
+      <div class="menu-title">メニュー</div>
+      <button class="menu-close" onclick="closeMenu()">×</button>
+    </div>
+    <div class="menu-tabs">
+      <button class="menu-tab active" id="tab-info"     onclick="switchTab('info')">📖 使い方</button>
+      <button class="menu-tab"        id="tab-keisan"   onclick="switchTab('keisan')">🧮 計算機</button>
+      <button class="menu-tab"        id="tab-calc"     onclick="switchTab('calc')">🔢 人工計算</button>
+      <button class="menu-tab"        id="tab-progress" onclick="switchTab('progress')">📅 人工管理</button>
+      <button class="menu-tab"        id="tab-save"     onclick="switchTab('save')">💾 保存</button>
+      <button class="menu-tab"        id="tab-color"    onclick="switchTab('color')">🎨 色</button>
+      <button class="menu-tab"        id="tab-updates"  onclick="switchTab('updates')">🆕 更新</button>
+      <button class="menu-tab"        id="tab-privacy"  onclick="switchTab('privacy')">🔒 規約</button>
+      <button class="menu-tab"        id="tab-contact"  onclick="switchTab('contact')">✉️ お問合せ</button>
+    </div>
+
+    <!-- 色設定 -->
+    <div class="menu-content" id="content-color" style="display:none;">
+      <div class="menu-sec-title">スパン別の色</div>
+      <div id="color-settings"></div>
+    </div>
+
+    <!-- 保存・読み込み -->
+    <div class="menu-content" id="content-save" style="display:none;">
+      <div class="menu-sec-title">現在の図面を保存</div>
+      <div class="save-input-row">
+        <input class="save-input" id="save-title" type="text" placeholder="現場名・タイトルを入力" maxlength="30">
+        <button class="save-btn" style="width:100%;padding:12px;" onclick="saveDrawing()">保存</button>
+      </div>
+      <div class="menu-sec-title" style="margin-top:20px;">保存済みの図面</div>
+      <div id="saved-list"></div>
+
+      <!-- バックアップ -->
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--sep);">
+        <div class="menu-sec-title">バックアップ</div>
+        <div style="font-size:12px;color:var(--text-dim);margin:8px 0 12px;">保存データが消えた時に備えて定期的にバックアップを書き出しておくことをおすすめします。</div>
+        <div style="display:flex;gap:8px;flex-direction:column;">
+          <button class="save-btn" style="width:100%;padding:12px;" onclick="exportBackup()">📤 バックアップを書き出す</button>
+          <label class="backup-import-btn">
+            📥 バックアップを読み込む
+            <input type="file" accept=".json" style="display:none;" onchange="importBackup(event)">
+          </label>
+        </div>
+        <div id="import-msg" style="display:none;margin-top:10px;padding:10px;border-radius:8px;font-size:13px;"></div>
+      </div>
+    </div>
+
+    <!-- 人工計算 -->
+    <div class="menu-content" id="content-calc" style="display:none;">
+      <div class="menu-sec-title">人工計算</div>
+
+      <div class="calc-group">
+        <div class="calc-label">平米数（㎡）</div>
+        <input class="calc-input" id="calc-sqm" type="number" inputmode="decimal" placeholder="例：100" oninput="calcNinku()">
+      </div>
+      <div class="calc-group">
+        <div class="calc-label">平米単価（円/㎡）</div>
+        <input class="calc-input" id="calc-tanka" type="number" inputmode="decimal" placeholder="例：1500" oninput="calcNinku()">
+      </div>
+      <div class="calc-group">
+        <div class="calc-label">常用金額（円/人工）</div>
+        <input class="calc-input" id="calc-joyo" type="number" inputmode="decimal" placeholder="例：25000" oninput="calcNinku()">
+      </div>
+
+      <div class="calc-group">
+        <div class="calc-label">組立：解体の比率（合計10）</div>
+        <div class="ratio-row">
+          <div class="ratio-item">
+            <div class="ratio-label" style="color:#22cc88;">🔧 組立</div>
+            <div class="ratio-counter">
+              <button class="ratio-btn" onclick="changeRatio(-1)">−</button>
+              <span class="ratio-val" id="ratio-kumi">6</span>
+              <button class="ratio-btn" onclick="changeRatio(1)">＋</button>
+            </div>
+          </div>
+          <div class="ratio-sep">：</div>
+          <div class="ratio-item">
+            <div class="ratio-label" style="color:#00d4ff;">🔨 解体</div>
+            <div class="ratio-val-fixed" id="ratio-kai">4</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="calc-result-box" id="calc-result" style="display:none;">
+        <div class="calc-result-row">
+          <div class="calc-result-label">工事金額</div>
+          <div class="calc-result-value" id="res-koji">－</div>
+        </div>
+        <div class="calc-result-row">
+          <div class="calc-result-label">使える人工（合計）</div>
+          <div class="calc-result-value" id="res-total">－</div>
+        </div>
+        <div class="calc-result-divider"></div>
+        <div class="calc-result-row highlight-green">
+          <div class="calc-result-label">🔧 組立（<span id="res-kumi-pct">60</span>%）</div>
+          <div class="calc-result-value" id="res-kumi">－</div>
+        </div>
+        <div class="calc-result-row highlight-blue">
+          <div class="calc-result-label">🔨 解体（<span id="res-kai-pct">40</span>%）</div>
+          <div class="calc-result-value" id="res-kai">－</div>
+        </div>
+      </div>
+
+      <button class="calc-reset-btn" onclick="resetCalc()">リセット</button>
+
+      <!-- 人工管理へ反映ボタン -->
+      <button class="reflect-btn" id="reflect-btn" onclick="reflectToProgress()" style="display:none;">
+        📋 この結果を人工管理に反映する
+      </button>
+
+    </div>
+
+    <!-- 人工管理 -->
+    <div class="menu-content" id="content-progress" style="display:none;">
+      <div class="menu-sec-title">人工管理</div>
+
+      <!-- 現場選択 -->
+      <div class="prog-section">
+        <div class="menu-sec-title" style="font-size:10px;">現場を選択・追加</div>
+        <div class="prog-site-row">
+          <select class="prog-select" id="prog-site-select" onchange="selectSite()">
+            <option value="">-- 現場を選択 --</option>
+          </select>
+          <button class="prog-add-btn" onclick="showAddSite()">＋ 追加</button>
+        </div>
+        <div class="prog-add-form" id="prog-add-form" style="display:none;">
+          <input class="calc-input" id="prog-site-name" placeholder="現場名を入力" style="margin-bottom:8px;">
+          <div class="calc-label">平米数（㎡）</div>
+          <input class="calc-input" id="prog-sqm" type="number" inputmode="decimal" placeholder="例：100" style="margin-bottom:8px;" oninput="calcSiteTarget()">
+          <div class="calc-label">平米単価（円/㎡）</div>
+          <input class="calc-input" id="prog-tanka" type="number" inputmode="decimal" placeholder="例：1500" style="margin-bottom:8px;" oninput="calcSiteTarget()">
+          <div class="calc-label">常用金額（円/人工）</div>
+          <input class="calc-input" id="prog-joyo" type="number" inputmode="decimal" placeholder="例：25000" style="margin-bottom:8px;" oninput="calcSiteTarget()">
+          <!-- 自動計算結果 -->
+          <div id="prog-site-calc-result" style="display:none;background:var(--surface);border-radius:8px;padding:10px;margin-bottom:8px;">
+            <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">自動計算結果</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:12px;color:var(--text-dim);">工事金額</span>
+              <span style="font-size:14px;font-weight:700;color:var(--accent);" id="prog-koji-disp">－</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+              <span style="font-size:12px;color:var(--text-dim);">目標人工（合計）</span>
+              <span style="font-size:16px;font-weight:700;color:var(--accent2);" id="prog-target-auto">－</span>
+            </div>
+          </div>
+          <div class="calc-label" style="margin-bottom:6px;">組立：解体の比率（合計10）</div>
+          <div style="display:flex;align-items:center;gap:10px;background:var(--surface);border-radius:10px;padding:10px 12px;margin-bottom:10px;flex-wrap:nowrap;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;">
+              <div style="font-size:11px;color:#22cc88;font-weight:600;">🔧 組立</div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <button class="ratio-btn" onclick="changeSiteRatioNew(-1)">−</button>
+                <span style="font-size:22px;font-weight:700;color:var(--text);min-width:22px;text-align:center;" id="site-ratio-kumi">6</span>
+                <button class="ratio-btn" onclick="changeSiteRatioNew(1)">＋</button>
+              </div>
+            </div>
+            <div style="font-size:18px;color:var(--text-dim);font-weight:700;flex-shrink:0;">：</div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;">
+              <div style="font-size:11px;color:#00d4ff;font-weight:600;">🔨 解体</div>
+              <div style="font-size:22px;font-weight:700;color:#00d4ff;min-width:22px;text-align:center;" id="site-ratio-kai">4</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="save-btn" onclick="addSite()">追加</button>
+            <button class="calc-reset-btn" style="flex:1;" onclick="hideAddSite()">キャンセル</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 現場サマリー -->
+      <div class="prog-summary" id="prog-summary" style="display:none;">
+        <div class="prog-summary-name" id="prog-summary-name"></div>
+        <div id="prog-site-info" style="display:none;font-size:11px;color:var(--text-dim);margin-bottom:10px;padding:6px 8px;background:var(--surface);border-radius:6px;"></div>
+        <!-- 合計 -->
+        <div class="prog-summary-row">
+          <div class="prog-summary-item">
+            <div class="prog-summary-label">目標（合計）</div>
+            <div class="prog-summary-val" id="prog-target-disp">－</div>
+          </div>
+          <div class="prog-summary-item">
+            <div class="prog-summary-label">使用済み</div>
+            <div class="prog-summary-val used" id="prog-used-disp">－</div>
+          </div>
+          <div class="prog-summary-item">
+            <div class="prog-summary-label">残り</div>
+            <div class="prog-summary-val remain" id="prog-remain-disp">－</div>
+          </div>
+        </div>
+        <!-- 進捗バー -->
+        <div class="prog-bar-wrap">
+          <div class="prog-bar" id="prog-bar"></div>
+        </div>
+        <div class="prog-bar-label" id="prog-bar-label"></div>
+        <!-- 組立内訳 -->
+        <div style="margin-top:12px;display:flex;gap:8px;">
+          <div class="prog-summary-item" style="border-left:3px solid #22cc88;">
+            <div class="prog-summary-label" style="color:#22cc88;">🔧 組立目標</div>
+            <div class="prog-summary-val" style="color:#22cc88;" id="prog-kumi-target">－</div>
+            <div class="prog-summary-label" style="margin-top:4px;">使用済み</div>
+            <div class="prog-summary-val used" id="prog-kumi-used">－</div>
+            <div class="prog-summary-label" style="margin-top:4px;">残り</div>
+            <div class="prog-summary-val remain" id="prog-kumi-remain">－</div>
+          </div>
+          <div class="prog-summary-item" style="border-left:3px solid #00d4ff;">
+            <div class="prog-summary-label" style="color:#00d4ff;">🔨 解体目標</div>
+            <div class="prog-summary-val" style="color:#00d4ff;" id="prog-kai-target">－</div>
+            <div class="prog-summary-label" style="margin-top:4px;">使用済み</div>
+            <div class="prog-summary-val used" id="prog-kai-used">－</div>
+            <div class="prog-summary-label" style="margin-top:4px;">残り</div>
+            <div class="prog-summary-val remain" id="prog-kai-remain">－</div>
+          </div>
+        </div>
+        <!-- 比率変更 -->
+        <div style="margin-top:12px;">
+          <div class="calc-label">組立：解体の比率を変更（合計10）</div>
+          <div style="background:var(--surface);border-radius:10px;padding:12px;margin-top:8px;">
+            <div style="display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:12px;">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+                <div style="font-size:11px;color:#22cc88;font-weight:600;">🔧 組立</div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <button class="ratio-btn" onclick="changeSiteRatioLive(-1)">−</button>
+                  <span style="font-size:24px;font-weight:700;color:var(--text);min-width:28px;text-align:center;" id="prog-ratio-kumi">6</span>
+                  <button class="ratio-btn" onclick="changeSiteRatioLive(1)">＋</button>
+                </div>
+              </div>
+              <div style="font-size:20px;color:var(--text-dim);font-weight:700;">：</div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+                <div style="font-size:11px;color:#00d4ff;font-weight:600;">🔨 解体</div>
+                <div style="font-size:24px;font-weight:700;color:#00d4ff;min-width:28px;text-align:center;" id="prog-ratio-kai">4</div>
+              </div>
+            </div>
+            <button class="save-btn" style="width:100%;" onclick="applyRatioLive()">適用</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 日付入力 -->
+      <div class="prog-section" id="prog-input-section" style="display:none;">
+        <div class="menu-sec-title">人工を入力</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <input class="calc-input" id="prog-date" type="date">
+          <select class="prog-select" id="prog-type">
+            <option value="kumi">🔧 組立</option>
+            <option value="kai">🔨 解体</option>
+          </select>
+          <input class="calc-input" id="prog-ninku" type="number" inputmode="decimal" placeholder="人工数を入力">
+          <button class="save-btn" style="width:100%;padding:12px;" onclick="addNinku()">追加</button>
+        </div>
+      </div>
+
+      <!-- 日別履歴 -->
+      <div class="prog-section" id="prog-history-section" style="display:none;">
+        <div class="menu-sec-title">日別履歴</div>
+        <div id="prog-history-list"></div>
+      </div>
+
+      <!-- 削除ボタン（一番下） -->
+      <div id="prog-delete-section" style="display:none;margin-top:8px;">
+        <button class="calc-reset-btn" onclick="deleteSite()">この現場を削除</button>
+      </div>
+
+    </div>
+
+    <div class="menu-content" id="content-info" style="display:none;">
+      <div class="menu-sec-title">凡例</div>
+      <div id="legend-info"></div>
+
+      <div class="menu-sec-title" style="margin-top:20px;">基本操作</div>
+      <div class="info-list">
+        <div class="info-row"><span>✏️ 配置</span>プレビューを確認してタップで配置</div>
+        <div class="info-row"><span>連続配置</span>配置済みブロックをタップして選択（黄枠）→ドラッグで連続配置</div>
+        <div class="info-row"><span>✋ 移動</span>ブロック・メモをドラッグで移動</div>
+        <div class="info-row"><span>🗑️ 消去</span>タップで足場・BK・メモ・単管を削除</div>
+        <div class="info-row"><span>↩ / ↪</span>操作を1つ戻す・やり直す</div>
+        <div class="info-row"><span>縦 / 横</span>スパンの向きを切替</div>
+        <div class="info-row"><span>💾 保存</span>図面をタイトル付きで保存・読み込み</div>
+        <div class="info-row"><span>🖨️ 印刷</span>グリッド部分のみ白背景で印刷</div>
+        <div class="info-row"><span>📦 集計</span>材料の数量を自動集計</div>
+      </div>
+
+      <div class="menu-sec-title" style="margin-top:20px;">画面操作</div>
+      <div class="info-list">
+        <div class="info-row"><span>1本指</span>足場を配置・消去</div>
+        <div class="info-row"><span>2本指ドラッグ</span>画面を移動</div>
+        <div class="info-row"><span>2本指ピンチ</span>拡大・縮小</div>
+        <div class="info-row"><span>右下 ＋/－</span>ボタンで拡大・縮小</div>
+        <div class="info-row"><span>全体</span>図面全体を表示</div>
+      </div>
+
+      <div class="menu-sec-title" style="margin-top:20px;">足場の設定</div>
+      <div class="info-list">
+        <div class="info-row"><span>幅</span>610 / 914 / 1219mm から選択</div>
+        <div class="info-row"><span>スパン</span>610〜1829mm から選択。色で区別される</div>
+        <div class="info-row"><span>縦 / 横</span>縦＝スパンが縦方向、横＝スパンが横方向</div>
+      </div>
+
+      <div class="menu-sec-title" style="margin-top:20px;">📐 ブラケット（BK）</div>
+      <div class="info-list">
+        <div class="info-row"><span>① BKを選択</span>「📐 BK」をタップ（建地寸法バーは非表示）</div>
+        <div class="info-row"><span>② 幅を選択</span>350 / 500 / 750 / 1000mm から選択</div>
+        <div class="info-row"><span>③ スパン選択</span>610〜1829mm（デフォルト1829）</div>
+        <div class="info-row"><span>④ 配置</span>置きたい場所をタップ</div>
+        <div class="info-row"><span>削除</span>🗑️ 消去でタップして削除</div>
+      </div>
+
+      <div class="menu-sec-title" style="margin-top:20px;">🟦 足場板</div>
+      <div class="info-list">
+        <div class="info-row"><span>① 足場板を選択</span>「🟦 足場板」をタップ</div>
+        <div class="info-row"><span>② 幅・スパン選択</span>幅250/500、スパン610〜1829mm</div>
+        <div class="info-row"><span>③ 角度設定</span>スライダーで0〜180°（動かすとプレビュー表示）</div>
+        <div class="info-row"><span>④ 配置</span>置きたい場所をタップ</div>
+        <div class="info-row"><span>削除</span>🗑️ 消去でタップして削除</div>
+      </div>
+
+      <div class="menu-sec-title" style="margin-top:20px;">⚫ 単管</div>
+      <div class="info-list">
+        <div class="info-row"><span>① 単管を選択</span>「⚫ 単管」をタップ</div>
+        <div class="info-row"><span>② 間隔入力</span>縦間隔・横間隔をmm入力</div>
+        <div class="info-row"><span>③ 本数設定</span>縦・横の本数を＋−で設定</div>
+        <div class="info-row"><span>④ 配置</span>置きたい場所をタップ（プレビュー表示あり）</div>
+        <div class="info-row"><span>削除</span>🗑️ 消去で左上角付近をタップして削除</div>
+      </div>
+
+      <div class="menu-sec-title" style="margin-top:20px;">📏 離れ設定</div>
+      <div class="info-list">
+        <div class="info-row"><span>① 離れを選択</span>「📏 離れ」をタップ</div>
+        <div class="info-row"><span>② ブロックをタップ</span>離れを設定したいブロックをタップ</div>
+        <div class="info-row"><span>③ 角を選択</span>左上・右上・左下・右下の4角から選ぶ</div>
+        <div class="info-row"><span>④ 方向を選択</span>角に応じた2方向から選ぶ</div>
+        <div class="info-row"><span>⑤ 数値入力</span>離れをmm入力して「確定」</div>
+        <div class="info-row"><span>削除</span>「なし」ボタンで離れを解除</div>
+      </div>
+
+      <div class="menu-sec-title" style="margin-top:20px;">💬 メモ</div>
+      <div class="info-list">
+        <div class="info-row"><span>① メモを選択</span>「💬 メモ」をタップ</div>
+        <div class="info-row"><span>② 場所をタップ</span>メモを置きたい場所をタップ</div>
+        <div class="info-row"><span>③ テキスト入力</span>文字を入力し、サイズ（小/中/大）を選ぶ</div>
+        <div class="info-row"><span>④ 確定</span>「確定」をタップで図面上に表示</div>
+        <div class="info-row"><span>削除</span>🗑️ 消去でメモ付近をタップして削除</div>
+      </div>
+
+      <div class="menu-sec-title" style="margin-top:20px;">💾 バックアップ</div>
+      <div class="info-list">
+        <div class="info-row"><span>書き出し</span>保存タブ下の「📤 バックアップを書き出す」でJSONファイルを保存</div>
+        <div class="info-row"><span>読み込み</span>「📥 バックアップを読み込む」で復元</div>
+        <div class="info-row"><span>推奨</span>定期的にバックアップを書き出しておくと安心</div>
+      </div>
+    </div>
+
+      <div class="menu-sec-title" style="margin-top:20px;">🧮 計算機</div>
+      <div class="info-list">
+        <div class="info-row"><span>機能</span>四則演算・%・符号反転が使える電卓</div>
+      </div>
+
+      <div class="menu-sec-title" style="margin-top:20px;">🔢 人工計算</div>
+      <div class="info-list">
+        <div class="info-row"><span>入力</span>平米数・平米単価・常用金額を入力</div>
+        <div class="info-row"><span>結果</span>工事金額・合計人工・組立／解体の人工を自動計算</div>
+        <div class="info-row"><span>比率</span>組立：解体の比率を変更可能（デフォルト6:4）</div>
+        <div class="info-row"><span>反映</span>計算結果を人工管理タブに引き継ぎ可能</div>
+      </div>
+
+      <div class="menu-sec-title" style="margin-top:20px;">📅 人工管理</div>
+      <div class="info-list">
+        <div class="info-row"><span>現場登録</span>現場名・平米数・単価・常用金額・比率を入力</div>
+        <div class="info-row"><span>目標人工</span>組立・解体の目標人工を自動計算</div>
+        <div class="info-row"><span>日次入力</span>日付・組立/解体・人工数を入力して記録</div>
+        <div class="info-row"><span>進捗確認</span>使用済み・残り・消化率をリアルタイム表示</div>
+        <div class="info-row"><span>比率変更</span>登録後も比率を変更できる</div>
+        <div class="info-row"><span>複数現場</span>現場ごとに独立して管理できる</div>
+      </div>
+
+      <div class="menu-sec-title" style="margin-top:20px;">🎨 色設定</div>
+      <div class="info-list">
+        <div class="info-row"><span>変更方法</span>スパンごとに18色から自由に変更可能</div>
+      </div>
+    </div>
+
+    <!-- 更新履歴 -->
+    <div class="menu-content" id="content-updates" style="display:none;">
+      <div class="menu-sec-title">バージョン情報</div>
+      <div class="version-badge">ver 0.1.0 β</div>
+      <div class="menu-sec-title" style="margin-top:20px;">更新履歴</div>
+      <div class="update-list">
+        <div class="update-item">
+          <div class="update-ver">ver 0.1.0 β</div>
+          <div class="update-date">2025年 β版リリース</div>
+          <div class="update-notes">
+            <div class="update-note">・足場図面の配置機能</div>
+            <div class="update-note">・幅・スパン別の実寸比率表示</div>
+            <div class="update-note">・縦置き・横置きの切替</div>
+            <div class="update-note">・拡大縮小・移動機能</div>
+            <div class="update-note">・スパン別カラー設定</div>
+            <div class="update-note">・アンドゥ・リドゥ機能</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- プライバシーポリシー -->
+    <div class="menu-content" id="content-privacy" style="display:none;">
+      <div class="menu-sec-title">プライバシーポリシー</div>
+      <div class="privacy-text">
+
+        <div class="privacy-section">
+          <div class="privacy-heading">はじめに</div>
+          <div class="privacy-body">足場プランナー（以下「本アプリ」）は、利用者のプライバシーを尊重し、個人情報の保護に努めます。本ポリシーは、本アプリにおける情報の取り扱いについて説明するものです。</div>
+        </div>
+
+        <div class="privacy-section">
+          <div class="privacy-heading">収集する情報について</div>
+          <div class="privacy-body">本アプリは、利用者が入力した図面データ・メモ・設定情報等を一切のサーバーに送信しません。これらのデータはお使いの端末内（ブラウザのlocalStorage）にのみ保存されます。</div>
+        </div>
+
+        <div class="privacy-section">
+          <div class="privacy-heading">アクセス解析ツールについて</div>
+          <div class="privacy-body">本アプリはアクセス状況を把握するためにGoogle Analytics（Googleが提供するアクセス解析サービス）を使用しています。Google Analyticsはアクセス情報の収集のためにCookieを使用します。収集されるデータはIPアドレス・ブラウザ情報・ページ閲覧履歴などであり、個人を特定する情報は含まれません。Google Analyticsのデータ収集・処理の仕組みについては、Googleのプライバシーポリシー（https://policies.google.com/privacy）をご確認ください。</div>
+        </div>
+
+        <div class="privacy-section">
+          <div class="privacy-heading">Cookieについて</div>
+          <div class="privacy-body">本アプリはGoogle Analyticsの利用に伴いCookieを使用します。ブラウザの設定によりCookieを無効にすることができますが、その場合一部機能が利用できなくなる場合があります。</div>
+        </div>
+
+        <div class="privacy-section">
+          <div class="privacy-heading">広告について</div>
+          <div class="privacy-body">本アプリは将来的に広告を表示する場合があります。広告配信のため、第三者の広告サービスが利用者の行動情報をCookieにより収集することがあります。詳細は各広告サービスのプライバシーポリシーをご確認ください。</div>
+        </div>
+
+        <div class="privacy-section">
+          <div class="privacy-heading">免責事項</div>
+          <div class="privacy-body">本アプリの利用により生じた損害について、開発者は一切の責任を負いません。算出された数量・図面はあくまで目安であり、実際の施工においては必ず現場確認を行ってください。</div>
+        </div>
+
+        <div class="privacy-section">
+          <div class="privacy-heading">著作権・禁止事項</div>
+          <div class="privacy-body">本アプリのソースコード・デザイン・コンテンツの著作権は開発者に帰属します。無断での複製・再配布・商用利用を禁止します。</div>
+        </div>
+
+        <div class="privacy-section">
+          <div class="privacy-heading">ポリシーの変更</div>
+          <div class="privacy-body">本ポリシーは予告なく変更される場合があります。変更後も本アプリを継続してご利用された場合、変更に同意したものとみなします。</div>
+        </div>
+
+        <div class="privacy-section">
+          <div class="privacy-heading">制定日</div>
+          <div class="privacy-body">2025年 制定　／　2026年4月 改定</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- お問い合わせ -->
+    <div class="menu-content" id="content-contact" style="display:none;">
+      <div class="menu-sec-title">お問い合わせ</div>
+      <div class="contact-body">
+        <div class="contact-desc">ご意見・ご要望・不具合の報告など、お気軽にご連絡ください。いただいたフィードバックは今後の改善に活かします。</div>
+
+        <!-- 送信フォーム -->
+        <div id="contact-form-wrap">
+          <div class="calc-group">
+            <div class="calc-label">お問い合わせの種類</div>
+            <select class="prog-select" id="contact-type" style="width:100%;">
+              <option value="">-- 選択してください --</option>
+              <option value="機能追加の要望">🔧 機能追加の要望</option>
+              <option value="不具合の報告">🐛 不具合の報告</option>
+              <option value="操作方法についての質問">❓ 操作方法についての質問</option>
+              <option value="その他">💬 その他</option>
+            </select>
+          </div>
+          <div class="calc-group">
+            <div class="calc-label">お名前（任意）</div>
+            <input class="calc-input" id="contact-name" type="text" placeholder="例：田中">
+          </div>
+          <div class="calc-group">
+            <div class="calc-label">お問い合わせ内容</div>
+            <textarea class="calc-input" id="contact-message" rows="5" placeholder="内容を入力してください" style="resize:vertical;line-height:1.6;"></textarea>
+          </div>
+          <button class="save-btn" style="width:100%;padding:14px;font-size:15px;" onclick="submitContact()">送信する</button>
+        </div>
+
+        <!-- 送信完了 -->
+        <div id="contact-done" style="display:none;text-align:center;padding:30px 0;">
+          <div style="font-size:48px;margin-bottom:16px;">✅</div>
+          <div style="font-size:16px;color:var(--text);font-weight:600;margin-bottom:8px;">送信しました！</div>
+          <div style="font-size:13px;color:var(--text-dim);">フィードバックありがとうございます。</div>
+          <button class="save-btn" style="margin-top:20px;" onclick="resetContact()">もう一度送る</button>
+        </div>
+
+        <!-- エラー -->
+        <div id="contact-error" style="display:none;margin-top:10px;padding:12px;background:#e03e3e22;border-radius:8px;border:1px solid var(--danger);">
+          <div style="font-size:13px;color:var(--danger);">送信に失敗しました。時間をおいて再度お試しください。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 計算機 -->
+    <div class="menu-content" id="content-keisan" style="display:none;">
+      <div class="menu-sec-title">計算機</div>
+      <div class="keisan-display" id="keisan-display">0</div>
+      <div class="keisan-sub" id="keisan-sub"></div>
+      <div class="keisan-grid">
+        <button class="kbtn func" onclick="keisanClear()">C</button>
+        <button class="kbtn func" onclick="keisanSign()">+/−</button>
+        <button class="kbtn func" onclick="keisanPercent()">%</button>
+        <button class="kbtn op"   onclick="keisanOp('/')">÷</button>
+
+        <button class="kbtn" onclick="keisanNum('7')">7</button>
+        <button class="kbtn" onclick="keisanNum('8')">8</button>
+        <button class="kbtn" onclick="keisanNum('9')">9</button>
+        <button class="kbtn op" onclick="keisanOp('*')">×</button>
+
+        <button class="kbtn" onclick="keisanNum('4')">4</button>
+        <button class="kbtn" onclick="keisanNum('5')">5</button>
+        <button class="kbtn" onclick="keisanNum('6')">6</button>
+        <button class="kbtn op" onclick="keisanOp('-')">−</button>
+
+        <button class="kbtn" onclick="keisanNum('1')">1</button>
+        <button class="kbtn" onclick="keisanNum('2')">2</button>
+        <button class="kbtn" onclick="keisanNum('3')">3</button>
+        <button class="kbtn op" onclick="keisanOp('+')">＋</button>
+
+        <button class="kbtn zero" onclick="keisanNum('0')">0</button>
+        <button class="kbtn" onclick="keisanDot()">.</button>
+        <button class="kbtn eq" onclick="keisanEqual()">=</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- 1段目：操作ツール・向き・ズーム -->
+<div class="toolbar">
+  <button class="tbtn at" id="btn-draw"    onclick="setTool('draw')">✏️ 配置</button>
+  <button class="tbtn"    id="btn-move"    onclick="setTool('move')">✋ 移動</button>
+  <button class="tbtn"    id="btn-erase"   onclick="setTool('erase')">🗑️ 消去</button>
+  <div class="tsep"></div>
+  <button class="tbtn mt" id="rot-tate" onclick="setRotate(false)">縦</button>
+  <button class="tbtn"    id="rot-yoko" onclick="setRotate(true)">横</button>
+  <div class="tsep"></div>
+  <button class="tbtn" id="btn-undo" onclick="undo()">↩</button>
+  <button class="tbtn" id="btn-redo" onclick="redo()">↪</button>
+</div>
+
+<!-- 1.5段目：ツール2 -->
+<div class="toolbar toolbar2">
+  <button class="tbtn"    id="btn-bracket" onclick="setTool('bracket')">📐 BK</button>
+  <button class="tbtn"    id="btn-board"   onclick="setTool('board')">🟦 足場板</button>
+  <button class="tbtn"    id="btn-tankan"  onclick="setTool('tankan')">⚫ 単管</button>
+  <button class="tbtn"    id="btn-hanare"  onclick="setTool('hanare')">📏 離れ</button>
+  <button class="tbtn"    id="btn-memo"    onclick="setTool('memo')">💬 メモ</button>
+  <div class="tsep"></div>
+  <button class="tbtn" onclick="openSaveTab()">💾 保存</button>
+  <button class="tbtn" onclick="printCanvas()">🖨️ 印刷</button>
+</div>
+
+<!-- 単管設定バー -->
+<div class="toolbar toolbar2" id="tankan-bar" style="display:none;">
+  <div class="tlabel">縦間隔:</div>
+  <input class="hanare-input" id="tankan-v" type="number" inputmode="decimal" placeholder="mm" value="1800" style="width:70px;">
+  <div class="tlabel">横間隔:</div>
+  <input class="hanare-input" id="tankan-h" type="number" inputmode="decimal" placeholder="mm" value="900" style="width:70px;">
+  <div class="tlabel">縦本数:</div>
+  <button class="ratio-btn" onclick="changeTankanCount('v',-1)">−</button>
+  <span id="tankan-v-count" style="min-width:20px;text-align:center;font-size:14px;color:var(--accent2);">2</span>
+  <button class="ratio-btn" onclick="changeTankanCount('v',1)">＋</button>
+  <div class="tlabel">横本数:</div>
+  <button class="ratio-btn" onclick="changeTankanCount('h',-1)">−</button>
+  <span id="tankan-h-count" style="min-width:20px;text-align:center;font-size:14px;color:var(--accent2);">2</span>
+  <button class="ratio-btn" onclick="changeTankanCount('h',1)">＋</button>
+</div>
+
+<!-- 2段目：幅・スパン・凡例 -->
+<div class="toolbar toolbar2" id="waku-bar">
+  <div class="tlabel">幅:</div>
+  <button class="tbtn"    id="w-610"  onclick="setWidth(610)">610</button>
+  <button class="tbtn aw" id="w-914"  onclick="setWidth(914)">914</button>
+  <button class="tbtn"    id="w-1219" onclick="setWidth(1219)">1219</button>
+  <div class="tsep"></div>
+  <div class="tlabel">スパン:</div>
+  <button class="tbtn"    id="s-610"  onclick="setSpan(610)">610</button>
+  <button class="tbtn"    id="s-914"  onclick="setSpan(914)">914</button>
+  <button class="tbtn"    id="s-1219" onclick="setSpan(1219)">1219</button>
+  <button class="tbtn"    id="s-1524" onclick="setSpan(1524)">1524</button>
+  <button class="tbtn as" id="s-1829" onclick="setSpan(1829)">1829</button>
+  <div class="tsep"></div>
+  <div class="legend-inline">
+    <div class="legend-item"><div class="ldot" id="legend-dot-610"  style="background:#ff9ee033;border-color:#ff9ee0;"></div>610</div>
+    <div class="legend-item"><div class="ldot" id="legend-dot-914"  style="background:#ffd93d33;border-color:#ffd93d;"></div>914</div>
+    <div class="legend-item"><div class="ldot" id="legend-dot-1219" style="background:#6bcb7733;border-color:#6bcb77;"></div>1219</div>
+    <div class="legend-item"><div class="ldot" id="legend-dot-1524" style="background:#ff6b6b33;border-color:#ff6b6b;"></div>1524</div>
+    <div class="legend-item"><div class="ldot" id="legend-dot-1829" style="background:#00d4ff33;border-color:#00d4ff;"></div>1829</div>
+  </div>
+</div>
+
+<!-- 足場板設定バー -->
+<div class="toolbar toolbar2" id="board-bar" style="display:none;">
+  <div class="tlabel">幅:</div>
+  <button class="tbtn bd-active" id="bdw-305" onclick="setBoardWidth(305)">250</button>
+  <button class="tbtn"           id="bdw-610" onclick="setBoardWidth(610)">500</button>
+  <div class="tsep"></div>
+  <div class="tlabel">スパン:</div>
+  <button class="tbtn" id="bd-610"  onclick="setBoardSpan(610)">610</button>
+  <button class="tbtn" id="bd-914"  onclick="setBoardSpan(914)">914</button>
+  <button class="tbtn" id="bd-1219" onclick="setBoardSpan(1219)">1219</button>
+  <button class="tbtn" id="bd-1524" onclick="setBoardSpan(1524)">1524</button>
+  <button class="tbtn bd-active" id="bd-1829" onclick="setBoardSpan(1829)">1829</button>
+  <div class="tsep"></div>
+  <div class="tlabel">角度:</div>
+  <span class="board-angle-label" id="board-angle-label">0°</span>
+  <input class="board-slider" id="board-slider" type="range" min="0" max="180" step="15" value="0" oninput="setBoardAngle(this.value)">
+</div>
+
+<!-- 3段目：ブラケットサイズ（BKモード時のみ表示） -->
+<div class="toolbar toolbar2" id="bracket-bar" style="display:none;">
+  <div class="tlabel">幅:</div>
+  <button class="tbtn bkt" id="bk-350"  onclick="setBracketSize(350)">350</button>
+  <button class="tbtn"     id="bk-500"  onclick="setBracketSize(500)">500</button>
+  <button class="tbtn"     id="bk-750"  onclick="setBracketSize(750)">750</button>
+  <button class="tbtn"     id="bk-1000" onclick="setBracketSize(1000)">1000</button>
+  <div class="tsep"></div>
+  <div class="tlabel">スパン:</div>
+  <button class="tbtn"     id="bks-610"  onclick="setBracketSpan(610)">610</button>
+  <button class="tbtn"     id="bks-914"  onclick="setBracketSpan(914)">914</button>
+  <button class="tbtn"     id="bks-1219" onclick="setBracketSpan(1219)">1219</button>
+  <button class="tbtn"     id="bks-1524" onclick="setBracketSpan(1524)">1524</button>
+  <button class="tbtn bkt" id="bks-1829" onclick="setBracketSpan(1829)">1829</button>
+</div>
+
+<!-- 集計モーダル -->
+<div class="shuukei-overlay" id="shuukei-overlay" onclick="closeShuukeiOverlay(event)">
+  <div class="shuukei-modal" onclick="event.stopPropagation()">
+    <div class="shuukei-header">
+      <div class="shuukei-title">📦 材料集計</div>
+      <button class="elev-close" onclick="closeShuukei()">×</button>
+    </div>
+    <div class="shuukei-body">
+
+      <!-- STEP1：1段分の数量（自動＋手動調整） -->
+      <div class="shuukei-section">
+        <div class="menu-sec-title" style="font-size:12px;">① 1段分の数量　<span style="font-weight:400;color:var(--text-dim);">（±で調整できます）</span></div>
+        <div id="shuukei-debug" style="font-size:10px;color:var(--accent);margin-bottom:6px;word-break:break-all;"></div>
+        <div class="shuukei-table-wrap" style="margin-top:8px;">
+          <table class="shuukei-table">
+            <thead>
+              <tr><th>資材</th><th>サイズ</th><th style="width:120px;">1段あたり</th></tr>
+            </thead>
+            <tbody id="shuukei-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- STEP2：段数入力 -->
+      <div class="shuukei-section">
+        <div class="menu-sec-title" style="font-size:12px;">② 段数を入力</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+          <button class="ratio-btn" onclick="changeShuukeiDan(-1)">−</button>
+          <span style="font-size:28px;font-weight:700;color:var(--accent2);min-width:34px;text-align:center;" id="shuukei-dan-val">1</span>
+          <button class="ratio-btn" onclick="changeShuukeiDan(1)">＋</button>
+          <span style="font-size:12px;color:var(--text-dim);">段</span>
+          <button class="save-btn" style="margin-left:auto;padding:10px 20px;" onclick="calcShuukeiTotal()">集計する</button>
+        </div>
+      </div>
+
+      <!-- STEP3：集計結果 -->
+      <div class="shuukei-section" id="shuukei-result-section" style="display:none;">
+        <div class="menu-sec-title" style="font-size:12px;">③ 集計結果　<span id="shuukei-dan-label" style="font-weight:400;color:var(--accent2);"></span></div>
+        <div class="shuukei-table-wrap" style="margin-top:8px;">
+          <table class="shuukei-table">
+            <thead>
+              <tr><th>資材</th><th>サイズ</th><th>合計数量</th></tr>
+            </thead>
+            <tbody id="shuukei-result-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- 上書き確認ダイアログ -->
+<div id="overwrite-dialog" style="display:none;position:fixed;inset:0;background:#000000bb;z-index:500;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border-radius:16px;padding:24px;width:85vw;max-width:340px;border:1px solid var(--sep);">
+    <div style="font-size:15px;color:var(--text);margin-bottom:20px;line-height:1.6;" id="overwrite-msg"></div>
+    <div style="display:flex;gap:10px;">
+      <button onclick="overwriteCancel()" style="flex:1;padding:12px;background:var(--surface2);color:var(--text);border:1px solid var(--sep);border-radius:8px;font-size:14px;font-family:'Noto Sans JP',sans-serif;cursor:pointer;">いいえ</button>
+      <button onclick="overwriteConfirm()" style="flex:1;padding:12px;background:var(--accent);color:#000;border:none;border-radius:8px;font-size:14px;font-weight:700;font-family:'Noto Sans JP',sans-serif;cursor:pointer;">はい</button>
+    </div>
+  </div>
+</div>
+
+<!-- 右下固定ズームボタン -->
+<div class="zoom-fab">
+  <button class="zoom-fab-btn" onclick="applyZoom(1.25)">＋</button>
+  <div class="zoom-fab-label" id="zoom-label">100%</div>
+  <button class="zoom-fab-btn" onclick="applyZoom(1/1.25)">－</button>
+  <button class="zoom-fab-btn" onclick="resetZoom()" style="font-size:11px;">全体</button>
+</div>
+
+<div class="canvas-wrap" id="canvas-wrap">
+  <canvas id="gc"></canvas>
+</div>
+
+<!-- 3段目：ブラケットサイズ（BKモード時のみ表示） -->
+<div class="memo-panel" id="memo-panel" style="display:none;">
+  <div class="hanare-title">💬 メモ</div>
+  <input class="hanare-input" id="memo-input" type="text" placeholder="テキストを入力" style="flex:1;width:auto;">
+  <select class="prog-select" id="memo-size" style="width:60px;padding:6px 4px;font-size:13px;">
+    <option value="12">小</option>
+    <option value="16" selected>中</option>
+    <option value="22">大</option>
+  </select>
+  <button class="hanare-apply-btn" onclick="applyMemo()">確定</button>
+  <button class="hanare-cancel-btn" onclick="cancelMemo()">✕</button>
+</div>
+
+<!-- 離れ設定パネル --><div class="hanare-panel" id="hanare-panel" style="display:none;">
+  <div class="hanare-title">📏 離れ設定</div>
+  <!-- 角選択 -->
+  <div class="hanare-scope-row" id="hanare-corner-row">
+    <button class="hanare-scope-btn" id="hanare-corner-tl" onclick="setHanareCorner('tl')">↖ 左上</button>
+    <button class="hanare-scope-btn" id="hanare-corner-tr" onclick="setHanareCorner('tr')">↗ 右上</button>
+    <button class="hanare-scope-btn" id="hanare-corner-bl" onclick="setHanareCorner('bl')">↙ 左下</button>
+    <button class="hanare-scope-btn" id="hanare-corner-br" onclick="setHanareCorner('br')">↘ 右下</button>
+  </div>
+  <!-- 方向選択（角に応じて2つ表示） -->
+  <div class="hanare-scope-row" id="hanare-dir-row">
+    <button class="hanare-scope-btn" id="hanare-dir-top"    onclick="setHanareDir('top')"   style="display:none;">↑ 上</button>
+    <button class="hanare-scope-btn" id="hanare-dir-right"  onclick="setHanareDir('right')" style="display:none;">→ 右</button>
+    <button class="hanare-scope-btn" id="hanare-dir-bottom" onclick="setHanareDir('bottom')"style="display:none;">↓ 下</button>
+    <button class="hanare-scope-btn" id="hanare-dir-left"   onclick="setHanareDir('left')"  style="display:none;">← 左</button>
+  </div>
+  <div class="hanare-input-row">
+    <input class="hanare-input" id="hanare-input" type="number" inputmode="decimal" placeholder="mm入力">
+    <button class="hanare-apply-btn" onclick="applyHanare()">確定</button>
+    <button class="hanare-q-btn" onclick="setHanareQuick(0)">なし</button>
+    <button class="hanare-cancel-btn" onclick="cancelHanare()">✕</button>
+  </div>
+</div>
+
+<div class="stat-bar">
+  <div class="stat-item">スパン数: <span id="stat-spans">0</span></div>
+  <div class="stat-item">実長: <span id="stat-len">0</span>mm</div>
+  <div class="stat-item">ブロック: <span id="stat-cells">0</span></div>
+</div>
+
+<div class="controls">
+  <div class="btn-row" style="justify-content:space-between;">
+    <button class="clear-btn" onclick="openShuukei()" style="background:transparent;border-color:var(--accent);color:var(--accent);">📦 集計</button>
+    <button class="clear-btn" onclick="clearAll()">全消去</button>
+  </div>
+</div>
+
+<script>
+// ===== 定数 =====
+const BASE_MM   = 101;  // グリッド最小単位 101mm（305の約1/3）
+const GRID_COLS = 900;  // 900×101mm = 90,900mm（約91m）
+const GRID_ROWS = 600;  // 600×101mm = 60,600mm（約61m）
+const WIDTH_OPTIONS = [610,914,1219];
+const SPAN_OPTIONS  = [610,914,1219,1524,1829];
+const SPAN_COLORS  = {
+  610:  {line:'#ff9ee0',fill:'#ff9ee010'},
+  914:  {line:'#ffd93d',fill:'#ffd93d10'},
+  1219: {line:'#6bcb77',fill:'#6bcb7710'},
+  1524: {line:'#ff6b6b',fill:'#ff6b6b10'},
+  1829: {line:'#00d4ff',fill:'#00d4ff10'},
+};
+
+// ===== 状態 =====
+let blocks       = [];
+let undoStack    = []; // 操作履歴
+let redoStack    = []; // やり直し履歴
+let tool         = 'draw';
+let moveTarget   = null; // {type:'block'|'memo', idx, startCol, startRow, grabCol, grabRow}
+let currentWidth = 914;
+let currentSpan  = 1829;
+let isRotated    = false;
+// ブラケット
+let currentBracketSize = 350;
+let currentBracketSpan = 1829;
+const BRACKET_SIZES = [350, 500, 750, 1000];
+// 表示サイズ→実際のグリッドサイズ（305mm単位）への変換
+const BRACKET_SIZE_MAP = {
+  350:  303,   // 3グリッド（303mm）
+  500:  505,   // 5グリッド（505mm）
+  750:  707,   // 7グリッド（707mm）
+  1000: 1010,  // 10グリッド（1010mm）
+};
+const BRACKET_COLOR = { line: '#ff8c00', fill: '#ff8c0020' };
+
+// ポインタ状態
+let isDown    = false;
+let lastUpPos = null;
+let previewPos = null;
+let panStart  = null;
+let dragStartPos = null; // ドラッグ開始位置（誤操作防止用）
+const DRAG_THRESHOLD = 999; // 距離制限なし（ピンチ判定で制御）
+// プレビューを指の上に表示（px単位で150px上）
+function previewOffset() { return -Math.ceil(150 / U); }
+
+const canvas = document.getElementById('gc');
+const ctx    = canvas.getContext('2d');
+let U = 20;
+let BASE_U = 20;
+const ZOOM_MIN = 0.1;
+const ZOOM_MAX = 8.0;
+let zoomLevel = 1.0;
+
+// ===== 初期化 =====
+function init() {
+  const wrap = document.getElementById('canvas-wrap');
+  const aw = wrap.clientWidth - 12;
+  const ah = wrap.clientHeight - 12;
+  BASE_U = Math.max(3, Math.min(32, Math.floor(Math.min(aw/GRID_COLS, ah/GRID_ROWS) * 4)));
+  U = BASE_U * zoomLevel;
+  canvas.width  = Math.round(GRID_COLS * U);
+  canvas.height = Math.round(GRID_ROWS * U);
+  // 初期表示をキャンバス中央にスクロール
+  wrap.scrollLeft = (canvas.width  - aw) / 2;
+  wrap.scrollTop  = (canvas.height - ah) / 2;
+  document.getElementById('zoom-label').textContent = Math.round(zoomLevel*100)+'%';
+  redraw();
+}
+
+function applyZoom(delta, cx, cy) {
+  const wrap = document.getElementById('canvas-wrap');
+  const px = cx !== undefined ? cx : wrap.clientWidth/2;
+  const py = cy !== undefined ? cy : wrap.clientHeight/2;
+  const ratioX = (wrap.scrollLeft + px) / canvas.width;
+  const ratioY = (wrap.scrollTop  + py) / canvas.height;
+
+  zoomLevel = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoomLevel * delta));
+  U = Math.max(0.5, BASE_U * zoomLevel);
+  canvas.width  = Math.round(GRID_COLS * U);
+  canvas.height = Math.round(GRID_ROWS * U);
+
+  wrap.scrollLeft = canvas.width  * ratioX - px;
+  wrap.scrollTop  = canvas.height * ratioY - py;
+  document.getElementById('zoom-label').textContent = Math.round(zoomLevel*100)+'%';
+
+  // ブロックがある場合、ブロックが画面から完全に外れないよう補正
+  if (blocks.length > 0) {
+    let minC=Infinity, minR=Infinity, maxC=-Infinity, maxR=-Infinity;
+    blocks.forEach(b => {
+      const {cols,rows} = blockSize(b);
+      minC = Math.min(minC, b.col);
+      minR = Math.min(minR, b.row);
+      maxC = Math.max(maxC, b.col + cols);
+      maxR = Math.max(maxR, b.row + rows);
+    });
+    const bLeft   = minC * U;
+    const bRight  = maxC * U;
+    const bTop    = minR * U;
+    const bBottom = maxR * U;
+    const aw = wrap.clientWidth;
+    const ah = wrap.clientHeight;
+    const margin = U * 2;
+
+    // ブロックが完全に画面外に出ないよう制限
+    if (wrap.scrollLeft > bRight - margin)  wrap.scrollLeft = bRight - margin;
+    if (wrap.scrollLeft + aw < bLeft + margin) wrap.scrollLeft = bLeft + margin - aw;
+    if (wrap.scrollTop  > bBottom - margin) wrap.scrollTop  = bBottom - margin;
+    if (wrap.scrollTop  + ah < bTop + margin)  wrap.scrollTop  = bTop + margin - ah;
+  }
+
+  redraw();
+}
+
+// ===== ユーティリティ =====
+function toU(mm) { return mm / BASE_MM; }
+
+function blockSize(b) {
+  return b.rotated
+    ? {cols: toU(b.spanMM),  rows: toU(b.widthMM)}
+    : {cols: toU(b.widthMM), rows: toU(b.spanMM)};
+}
+
+function isBlockAt(b, col, row) {
+  const {cols,rows} = blockSize(b);
+  return col>=b.col && col<b.col+cols && row>=b.row && row<b.row+rows;
+}
+
+// ===== 描画 =====
+function redraw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle='#0a0c12';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // グリッド描画（表示範囲のみ）
+  const wrap2 = document.getElementById('canvas-wrap');
+  const startC = Math.max(0, Math.floor(wrap2.scrollLeft / U) - 1);
+  const endC   = Math.min(GRID_COLS, Math.ceil((wrap2.scrollLeft + wrap2.clientWidth)  / U) + 1);
+  const startR = Math.max(0, Math.floor(wrap2.scrollTop  / U) - 1);
+  const endR   = Math.min(GRID_ROWS, Math.ceil((wrap2.scrollTop  + wrap2.clientHeight) / U) + 1);
+
+  // 細グリッド（101mm単位）
+  ctx.strokeStyle='#111620'; ctx.lineWidth=0.5;
+  ctx.beginPath();
+  for(let c=startC;c<=endC;c++){ctx.moveTo(c*U,startR*U);ctx.lineTo(c*U,endR*U);}
+  for(let r=startR;r<=endR;r++){ctx.moveTo(startC*U,r*U);ctx.lineTo(endC*U,r*U);}
+  ctx.stroke();
+
+  // 中グリッド（606mm ≈ 6マス）
+  ctx.strokeStyle='#191f30'; ctx.lineWidth=0.8;
+  ctx.beginPath();
+  for(let c=Math.floor(startC/6)*6;c<=endC;c+=6){ctx.moveTo(c*U,startR*U);ctx.lineTo(c*U,endR*U);}
+  for(let r=Math.floor(startR/6)*6;r<=endR;r+=6){ctx.moveTo(startC*U,r*U);ctx.lineTo(endC*U,r*U);}
+  ctx.stroke();
+
+  // 太グリッド（1818mm ≈ 18マス）
+  ctx.strokeStyle='#1e2840'; ctx.lineWidth=1.2;
+  ctx.beginPath();
+  for(let c=Math.floor(startC/18)*18;c<=endC;c+=18){ctx.moveTo(c*U,startR*U);ctx.lineTo(c*U,endR*U);}
+  for(let r=Math.floor(startR/18)*18;r<=endR;r+=18){ctx.moveTo(startC*U,r*U);ctx.lineTo(endC*U,r*U);}
+  ctx.stroke();
+
+  // 確定済みブロック
+  blocks.forEach(b => drawBlock(b, 1.0, false));
+  tankans.forEach(t => drawTankan(t));
+  // 選択中ブロックのハイライト
+  if (selectedBlockIdx !== null && blocks[selectedBlockIdx]) {
+    const b = blocks[selectedBlockIdx];
+    const {cols, rows} = blockSize(b);
+    const x = b.col * U, y = b.row * U;
+    const w = cols * U, h = rows * U;
+    ctx.save();
+    ctx.strokeStyle = '#ffcc00';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(x-3, y-3, w+6, h+6);
+    ctx.restore();
+  }
+  // ドラッグ配置プレビュー（半透明）
+  if (dragPlacePreview.length > 1) {
+    dragPlacePreview.forEach(b => drawBlock(b, 0.4, true));
+  }
+
+  // 足場板描画
+  boards.forEach(b => drawBoard(b, 1.0));
+  drawBoardPreview();
+
+
+  // プレビュー（配置・ブラケットツール）
+  if (previewPos && tool==='draw' && selectedBlockIdx === null) {
+    const dummy = {col:previewPos.col, row:previewPos.row, widthMM:currentWidth, spanMM:currentSpan, rotated:isRotated};
+    drawBlock(dummy, 0.4, true);
+  }
+  if (previewPos && tool==='bracket') {
+    const actualSize = BRACKET_SIZE_MAP[currentBracketSize] || currentBracketSize;
+    const dummy = {col:previewPos.col, row:previewPos.row, widthMM:actualSize, spanMM:currentBracketSpan, rotated:isRotated, isBracket:true, bkLabel:currentBracketSize};
+    drawBlock(dummy, 0.4, true);
+  }
+  // 単管プレビュー
+  if (previewPos && tool==='tankan') {
+    const vSpanMM = parseInt(document.getElementById('tankan-v').value) || 1800;
+    const hSpanMM = parseInt(document.getElementById('tankan-h').value) || 900;
+    ctx.save();
+    ctx.globalAlpha = 0.4;
+    drawTankan({col: previewPos.col, row: previewPos.row, vSpanMM, hSpanMM, vCount: tankanVCount, hCount: tankanHCount});
+    ctx.restore();
+  }
+
+  // 移動中ブロックのハイライト
+  if (tool==='move' && moveTarget && moveTarget.type==='block') {
+    const b = blocks[moveTarget.idx];
+    drawBlock(b, 0.6, true);
+  }
+
+  // メモ描画
+  drawMemos();
+
+  // ピンチ中心インジケーター
+  if (pinchCenter) {
+    const wrap3 = document.getElementById('canvas-wrap');
+    const px = pinchCenter.x;
+    const py = pinchCenter.y;
+    const r = 18;
+    ctx.save();
+    ctx.strokeStyle = '#ffffff88';
+    ctx.lineWidth = 1.5;
+    // 円
+    ctx.beginPath();
+    ctx.arc(px, py, r, 0, Math.PI*2);
+    ctx.stroke();
+    // 十字
+    ctx.beginPath();
+    ctx.moveTo(px-r*0.6, py); ctx.lineTo(px+r*0.6, py);
+    ctx.moveTo(px, py-r*0.6); ctx.lineTo(px, py+r*0.6);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  updateStats();
+}
+
+function drawBlock(b, alpha, dashed) {
+  const col = b.isBracket ? BRACKET_COLOR : (SPAN_COLORS[b.spanMM] || SPAN_COLORS[1829]);
+  const {cols,rows} = blockSize(b);
+  const x=b.col*U, y=b.row*U, w=cols*U, h=rows*U;
+  const pad=Math.max(1,U*0.05);
+  const lw=Math.max(1,U*0.08);
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  if (b.isBracket) {
+    // ブラケット専用描画：斜線ハッチング
+    ctx.fillStyle = col.fill;
+    ctx.fillRect(x+pad,y+pad,w-pad*2,h-pad*2);
+    ctx.strokeStyle = col.line;
+    ctx.lineWidth = lw;
+    if (dashed) ctx.setLineDash([4,3]);
+    else        ctx.setLineDash([]);
+    ctx.strokeRect(x+pad,y+pad,w-pad*2,h-pad*2);
+    ctx.setLineDash([]);
+    // 斜線（矩形内にclip）
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x+pad, y+pad, w-pad*2, h-pad*2);
+    ctx.clip();
+    ctx.strokeStyle = col.line+'88';
+    ctx.lineWidth = lw*0.8;
+    const step = Math.max(4, U*0.6);
+    for (let i = -h; i < w+h; i += step) {
+      ctx.beginPath();
+      ctx.moveTo(x+pad+i, y+pad);
+      ctx.lineTo(x+pad+i+h, y+h-pad);
+      ctx.stroke();
+    }
+    ctx.restore();
+    // BKラベル（元のサイズ表示）
+    const fs = Math.max(8, Math.min(14, Math.min(w,h)*0.4));
+    if (w>20 && h>10) {
+      ctx.fillStyle = col.line;
+      ctx.font = 'bold '+fs+'px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('BK'+(b.bkLabel||b.widthMM), x+w/2, y+h/2+fs*0.35);
+    }
+  } else {
+    // 通常ブロック描画
+    ctx.fillStyle = col.fill;
+    ctx.fillRect(x+pad,y+pad,w-pad*2,h-pad*2);
+
+    ctx.strokeStyle = col.line+'55';
+    ctx.lineWidth = lw*0.7;
+    ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(x+pad*2,y+pad*2); ctx.lineTo(x+w-pad*2,y+h-pad*2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x+w-pad*2,y+pad*2); ctx.lineTo(x+pad*2,y+h-pad*2); ctx.stroke();
+
+    ctx.strokeStyle = col.line;
+    ctx.lineWidth = lw*1.3;
+    if (dashed) ctx.setLineDash([4,3]);
+    else        ctx.setLineDash([]);
+    ctx.strokeRect(x+pad,y+pad,w-pad*2,h-pad*2);
+    ctx.setLineDash([]);
+
+    const fs = Math.max(6, Math.min(11, Math.min(w,h)*0.28));
+    if (w>20 && h>12) {
+      ctx.fillStyle = col.line+'cc';
+      ctx.font = fs+'px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(b.widthMM+'×'+b.spanMM, x+w/2, y+h/2+fs*0.35);
+    }
+
+    if (b.rotated && w>16 && h>16) {
+      ctx.fillStyle = col.line+'bb';
+      ctx.font = Math.max(7,U*0.38)+'px monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText('↔', x+w-pad*2, y+pad*2+U*0.38);
+    }
+
+    // 建地丸（4角）
+    if (!b.isBracket) {
+      const r = Math.max(2, Math.min(5, U*0.22));
+      ctx.fillStyle = dashed ? col.line+'99' : col.line;
+      ctx.strokeStyle = '#0a0c12';
+      ctx.lineWidth = Math.max(0.5, r*0.3);
+      [[x, y],[x+w, y],[x, y+h],[x+w, y+h]].forEach(([cx2,cy2]) => {
+        ctx.beginPath();
+        ctx.arc(cx2, cy2, r, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+      });
+    }
+  }
+
+  // 離れ矢印表示（角_方向キー対応）
+  if (!dashed) {
+    // 後方互換
+    if (b.hanare != null && !b.hanares) {
+      b.hanares = {};
+      const oldDir = b.hanareDir || 'a';
+      if (!b.rotated) b.hanares[oldDir==='a' ? 'tl_left' : 'tr_right'] = b.hanare;
+      else            b.hanares[oldDir==='a' ? 'tl_top' : 'bl_bottom']  = b.hanare;
+    }
+    const hanares = b.hanares || {};
+    const hfs = Math.max(10, Math.min(14, U*0.65));
+    const pad = 4;
+
+    ctx.save();
+    ctx.strokeStyle = '#00d4ff';
+    ctx.fillStyle   = '#00d4ff';
+    ctx.lineWidth   = 1.5;
+
+    // 角ごとの基点座標
+    const corners = {
+      tl: {cx: x,   cy: y  },
+      tr: {cx: x+w, cy: y  },
+      bl: {cx: x,   cy: y+h},
+      br: {cx: x+w, cy: y+h},
+    };
+    // 方向ごとの矢印描画
+    Object.entries(hanares).forEach(([key, val]) => {
+      if (val == null) return;
+      const [corner, dir] = key.split('_');
+      const cp = corners[corner];
+      if (!cp) return;
+      const al = Math.max(20, Math.min(50, val / 305 * U * 1.5));
+
+      if (dir === 'top') {
+        // 上方向：基点から上へ
+        const ax = cp.cx, ay = cp.cy - pad - al;
+        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax, ay+al); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(ax-4,ay+5); ctx.lineTo(ax+4,ay+5); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(ax,ay+al); ctx.lineTo(ax-4,ay+al-5); ctx.lineTo(ax+4,ay+al-5); ctx.closePath(); ctx.fill();
+        ctx.font='bold '+hfs+'px monospace'; ctx.textAlign= corner.endsWith('l') ? 'left' : 'right';
+        ctx.fillText(val, corner.endsWith('l') ? ax+4 : ax-4, ay+al/2+hfs*0.35);
+      } else if (dir === 'bottom') {
+        // 下方向：基点から下へ
+        const ax = cp.cx, ay = cp.cy + pad;
+        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax, ay+al); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(ax-4,ay+5); ctx.lineTo(ax+4,ay+5); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(ax,ay+al); ctx.lineTo(ax-4,ay+al-5); ctx.lineTo(ax+4,ay+al-5); ctx.closePath(); ctx.fill();
+        ctx.font='bold '+hfs+'px monospace'; ctx.textAlign= corner.endsWith('l') ? 'left' : 'right';
+        ctx.fillText(val, corner.endsWith('l') ? ax+4 : ax-4, ay+al/2+hfs*0.35);
+      } else if (dir === 'left') {
+        // 左方向：基点から左へ
+        const ax = cp.cx - pad - al, ay = cp.cy;
+        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax+al, ay); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(ax+5,ay-4); ctx.lineTo(ax+5,ay+4); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(ax+al,ay); ctx.lineTo(ax+al-5,ay-4); ctx.lineTo(ax+al-5,ay+4); ctx.closePath(); ctx.fill();
+        ctx.font='bold '+hfs+'px monospace'; ctx.textAlign='center';
+        ctx.fillText(val, ax+al/2, corner.startsWith('t') ? ay-4 : ay+hfs);
+      } else if (dir === 'right') {
+        // 右方向：基点から右へ
+        const ax = cp.cx + pad, ay = cp.cy;
+        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax+al, ay); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(ax+5,ay-4); ctx.lineTo(ax+5,ay+4); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(ax+al,ay); ctx.lineTo(ax+al-5,ay-4); ctx.lineTo(ax+al-5,ay+4); ctx.closePath(); ctx.fill();
+        ctx.font='bold '+hfs+'px monospace'; ctx.textAlign='center';
+        ctx.fillText(val, ax+al/2, corner.startsWith('t') ? ay-4 : ay+hfs);
+      }
+    });
+
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+// ===== ポインタ操作 =====
+function getRaw(cx,cy) {
+  const r = canvas.getBoundingClientRect();
+  return {col:Math.floor((cx-r.left)/U), row:Math.floor((cy-r.top)/U)};
+}
+
+function getSnapped(cx,cy) {
+  const raw = getRaw(cx,cy);
+  return {col: raw.col, row: raw.row};
+}
+
+// ブラケットを近くの足場ブロック端にスナップ
+function snapBracketToBlock(raw, bkWidthMM, bkSpanMM, rotated) {
+  // ブラケットのグリッドサイズ
+  const bkCols = rotated ? Math.round(bkSpanMM / BASE_MM) : Math.round(bkWidthMM / BASE_MM);
+  const bkRows = rotated ? Math.round(bkWidthMM / BASE_MM) : Math.round(bkSpanMM / BASE_MM);
+
+  let bestCol = raw.col;
+  let bestRow = raw.row;
+  let bestDist = Infinity;
+
+  // 通常ブロック（非BK）を対象に近い端を探す
+  blocks.filter(b => !b.isBracket).forEach(b => {
+    const {cols, rows} = blockSize(b);
+
+    // ブラケットが隣接できる候補位置を列挙
+    const candidates = [
+      // 右に隣接
+      {col: b.col + cols, row: b.row},
+      // 左に隣接
+      {col: b.col - bkCols, row: b.row},
+      // 下に隣接
+      {col: b.col, row: b.row + rows},
+      // 上に隣接
+      {col: b.col, row: b.row - bkRows},
+    ];
+
+    candidates.forEach(c => {
+      const dist = Math.hypot(c.col - raw.col, c.row - raw.row);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestCol = c.col;
+        bestRow = c.row;
+      }
+    });
+  });
+
+  // スナップ範囲内（6グリッド以内）なら使う、遠ければそのまま
+  if (bestDist <= 6) return {col: bestCol, row: bestRow};
+  return raw;
+}
+
+// ドラッグ範囲配置用
+let multiPlaceMode = false;
+let dragPlaceStart = null;
+let dragPlacePreview = [];
+let selectedBlockIdx = null; // 選択中のブロックインデックス
+
+function toggleMultiPlace() {
+  multiPlaceMode = !multiPlaceMode;
+}
+
+function getDragPlaceBlocks(startCol, startRow, endCol, endRow) {
+  const dummy = {widthMM: currentWidth, spanMM: currentSpan, rotated: isRotated};
+  const {cols, rows} = blockSize(dummy);
+  const result = [];
+  if (!isRotated) {
+    const step = rows;
+    const dr = endRow - startRow;
+    const count = Math.max(1, Math.round(Math.abs(dr) / step) + 1);
+    const dir = dr >= 0 ? 1 : -1;
+    for (let i = 0; i < count; i++) {
+      result.push({col: startCol, row: startRow + i * dir * step, widthMM: currentWidth, spanMM: currentSpan, rotated: isRotated});
+    }
+  } else {
+    const step = cols;
+    const dc = endCol - startCol;
+    const count = Math.max(1, Math.round(Math.abs(dc) / step) + 1);
+    const dir = dc >= 0 ? 1 : -1;
+    for (let i = 0; i < count; i++) {
+      result.push({col: startCol + i * dir * step, row: startRow, widthMM: currentWidth, spanMM: currentSpan, rotated: isRotated});
+    }
+  }
+  return result;
+}
+
+// 選択ブロックから連続配置（選択ブロックのサイズ・向きを継承、選択ブロック自身は除く）
+function getDragPlaceBlocksFrom(srcBlock, endCol, endRow) {
+  const {cols, rows} = blockSize(srcBlock);
+  const startCol = srcBlock.col;
+  const startRow = srcBlock.row;
+  const result = [];
+  if (!srcBlock.rotated) {
+    const step = rows;
+    const dr = endRow - startRow;
+    const count = Math.max(1, Math.round(Math.abs(dr) / step) + 1);
+    const dir = dr >= 0 ? 1 : -1;
+    for (let i = 1; i < count; i++) { // i=0は選択ブロック自身なので除く
+      result.push({col: startCol, row: startRow + i * dir * step, widthMM: srcBlock.widthMM, spanMM: srcBlock.spanMM, rotated: srcBlock.rotated});
+    }
+  } else {
+    const step = cols;
+    const dc = endCol - startCol;
+    const count = Math.max(1, Math.round(Math.abs(dc) / step) + 1);
+    const dir = dc >= 0 ? 1 : -1;
+    for (let i = 1; i < count; i++) {
+      result.push({col: startCol + i * dir * step, row: startRow, widthMM: srcBlock.widthMM, spanMM: srcBlock.spanMM, rotated: srcBlock.rotated});
+    }
+  }
+  return result;
+}
+
+function onDown(cx,cy) {
+  isDown = true;
+  lastUpPos = {x:cx, y:cy};
+  dragStartPos = {x:cx, y:cy};
+  if (tool==='draw' || tool==='bracket' || tool==='board' || tool==='tankan') {
+    const s = getSnapped(cx, cy);
+    previewPos = {col: s.col, row: s.row + previewOffset()};
+    if (tool==='draw') {
+      const raw = getRaw(cx, cy);
+      const tappedIdx = blocks.findIndex(b => isBlockAt(b, raw.col, raw.row));
+      if (tappedIdx >= 0) {
+        // 既存ブロックをタップ→選択してドラッグ連続配置の準備
+        selectedBlockIdx = tappedIdx;
+        const b = blocks[tappedIdx];
+        dragPlaceStart = {col: b.col, row: b.row, widthMM: b.widthMM, spanMM: b.spanMM, rotated: b.rotated};
+        dragPlacePreview = [];
+      } else {
+        // 空白をタップ→選択解除＋通常配置準備
+        selectedBlockIdx = null;
+        dragPlaceStart = null;
+        dragPlacePreview = [];
+      }
+    }
+  } else if (tool==='memo') {
+    const raw = getRaw(cx, cy);
+    const idx = memos.findIndex(m => Math.hypot(m.col - raw.col, m.row - raw.row) <= 3);
+    if (idx >= 0) memoDrag = idx;
+  } else if (tool==='move') {
+    const raw = getRaw(cx, cy);
+    const bIdx = blocks.findIndex(b => isBlockAt(b, raw.col, raw.row));
+    if (bIdx >= 0) {
+      moveTarget = {type:'block', idx:bIdx,
+        startCol:blocks[bIdx].col, startRow:blocks[bIdx].row,
+        grabCol:raw.col, grabRow:raw.row};
+    } else {
+      const mIdx = memos.findIndex(m => Math.hypot(m.col - raw.col, m.row - raw.row) <= 3);
+      if (mIdx >= 0) {
+        moveTarget = {type:'memo', idx:mIdx,
+          startCol:memos[mIdx].col, startRow:memos[mIdx].row,
+          grabCol:raw.col, grabRow:raw.row};
+      } else {
+        // 何もない場所→画面スクロール
+        moveTarget = {type:'pan', grabX:cx, grabY:cy,
+          startScrollX: document.getElementById('canvas-wrap').scrollLeft,
+          startScrollY: document.getElementById('canvas-wrap').scrollTop};
+      }
+    }
+  }
+  redraw();
+}
+
+function onMove(cx,cy) {
+  if (!isDown) return;
+  lastUpPos = {x:cx, y:cy};
+  if (tool==='draw' || tool==='bracket' || tool==='board' || tool==='tankan') {
+    const s = getSnapped(cx, cy);
+    // 連続配置ドラッグ中はpreviewPosを更新しない
+    if (!(tool==='draw' && dragPlaceStart && selectedBlockIdx !== null)) {
+      previewPos = {col: s.col, row: s.row + previewOffset()};
+    }
+    // 選択ブロックからのドラッグ連続配置プレビュー
+    if (tool==='draw' && dragPlaceStart && selectedBlockIdx !== null) {
+      const b = blocks[selectedBlockIdx];
+      const raw = getRaw(cx, cy);
+      const endPos = {col: raw.col, row: raw.row};
+      const newPreview = getDragPlaceBlocksFrom(b, endPos.col, endPos.row);
+      dragPlacePreview = newPreview.length >= 2 ? newPreview : [];
+    }
+    redraw();
+  } else if (tool==='memo' && memoDrag !== null) {
+    const raw = getRaw(cx, cy);
+    const offsetRows = Math.ceil(150 / U);
+    memos[memoDrag].col = raw.col;
+    memos[memoDrag].row = raw.row - offsetRows;
+    redraw();
+  } else if (tool==='move' && moveTarget !== null) {
+    const raw = getRaw(cx, cy);
+    if (moveTarget.type === 'block') {
+      const dc = raw.col - moveTarget.grabCol;
+      const dr = raw.row - moveTarget.grabRow;
+      blocks[moveTarget.idx].col = moveTarget.startCol + dc;
+      blocks[moveTarget.idx].row = moveTarget.startRow + dr;
+      redraw();
+    } else if (moveTarget.type === 'memo') {
+      const dc = raw.col - moveTarget.grabCol;
+      const dr = raw.row - moveTarget.grabRow;
+      memos[moveTarget.idx].col = moveTarget.startCol + dc;
+      memos[moveTarget.idx].row = moveTarget.startRow + dr;
+      redraw();
+    } else if (moveTarget.type === 'pan') {
+      const wrap = document.getElementById('canvas-wrap');
+      wrap.scrollLeft = moveTarget.startScrollX - (cx - moveTarget.grabX);
+      wrap.scrollTop  = moveTarget.startScrollY - (cy - moveTarget.grabY);
+    }
+  }
+}
+
+function onUp(cx,cy) {
+  if (!isDown) return;
+  isDown = false;
+  const savedPreviewPos = previewPos; // リセット前に保存
+  previewPos = null;
+  panStart = null;
+
+  // ピンチ操作中・直後は配置しない
+  if (wasPinching) {
+    dragStartPos = null;
+    redraw();
+    return;
+  }
+
+  const moved = dragStartPos
+    ? Math.hypot(cx - dragStartPos.x, cy - dragStartPos.y)
+    : 0;
+  dragStartPos = null;
+
+  if (tool==='memo' && memoDrag !== null) {
+    saveHistory();
+    memoDrag = null;
+    redraw();
+    return;
+  }
+  memoDrag = null;
+
+  if (tool==='move' && moveTarget !== null) {
+    if (moveTarget.type !== 'pan') saveHistory();
+    moveTarget = null;
+    redraw();
+    return;
+  }
+  moveTarget = null;
+
+  if (tool==='draw' && moved < DRAG_THRESHOLD) {
+    const s = getSnapped(cx, cy);
+    const snapped = {col: s.col, row: s.row + previewOffset()};
+    if (selectedBlockIdx !== null && dragPlacePreview.length >= 2) {
+      // 選択ブロックから連続配置（選択ブロック自身は除く）
+      saveHistory();
+      dragPlacePreview.forEach(b => blocks.push({...b}));
+      selectedBlockIdx = null;
+    } else if (selectedBlockIdx !== null && dragPlacePreview.length < 2) {
+      // 選択ブロックをタップしただけ→選択のまま（何もしない）
+    } else {
+      // 通常配置：空白タップで1個配置
+      saveHistory();
+      blocks.push({col:snapped.col, row:snapped.row, widthMM:currentWidth, spanMM:currentSpan, rotated:isRotated});
+    }
+    dragPlaceStart = null;
+    dragPlacePreview = [];
+  } else if (tool==='bracket' && moved < DRAG_THRESHOLD) {
+    saveHistory();
+    const s = getSnapped(cx, cy);
+    const snapped = {col: s.col, row: s.row + previewOffset()};
+    const actualSize = BRACKET_SIZE_MAP[currentBracketSize] || currentBracketSize;
+    blocks.push({col:snapped.col, row:snapped.row, widthMM:actualSize, spanMM:currentBracketSpan, rotated:isRotated, isBracket:true, bkLabel:currentBracketSize});
+  } else if (tool==='board' && moved < DRAG_THRESHOLD) {
+    saveHistory();
+    const s = getSnapped(cx, cy);
+    boards.push({col: s.col, row: s.row + previewOffset(), spanMM: boardSpan, widthMM: boardWidth, angle: boardAngle});
+  } else if (tool==='tankan' && moved < DRAG_THRESHOLD) {
+    saveHistory();
+    const vSpanMM = parseInt(document.getElementById('tankan-v').value) || 1800;
+    const hSpanMM = parseInt(document.getElementById('tankan-h').value) || 900;
+    const pos = savedPreviewPos || {col: getRaw(cx,cy).col, row: getRaw(cx,cy).row};
+    tankans.push({col: pos.col, row: pos.row, vSpanMM, hSpanMM, vCount: tankanVCount, hCount: tankanHCount});
+  } else if (tool==='erase' && moved < DRAG_THRESHOLD) {
+    saveHistory();
+    const raw = getRaw(cx,cy);
+    // ブロック消去
+    blocks = blocks.filter(b => !isBlockAt(b, raw.col, raw.row));
+    // メモ消去（2グリッド以内）
+    memos  = memos.filter(m => Math.hypot(m.col - raw.col, m.row - raw.row) > 2);
+    // 足場板消去
+    boards = boards.filter(b => Math.hypot(b.col - raw.col, b.row - raw.row) > 2);
+    // 単管消去（左上角付近をタップ）
+    tankans = tankans.filter(t => Math.hypot(t.col - raw.col, t.row - raw.row) > 2);
+  } else if (tool==='hanare' && moved < DRAG_THRESHOLD) {
+    const raw = getRaw(cx,cy);
+    const idx = blocks.findIndex(b => isBlockAt(b, raw.col, raw.row));
+    if (idx >= 0) openHanarePanel(idx);
+  } else if (tool==='memo' && moved < DRAG_THRESHOLD) {
+    const raw = getRaw(cx,cy);
+    memoPos = raw;
+    document.getElementById('memo-input').focus();
+  }
+  redraw();
+}
+
+// マウス
+// ミドルボタンのデフォルト動作を抑制
+canvas.addEventListener('auxclick', e => e.preventDefault());
+canvas.addEventListener('mousedown', e => {
+  if (e.button === 1) { e.preventDefault(); return; }
+  if(tool==='move') canvas.style.cursor='grabbing';
+  onDown(e.clientX, e.clientY);
+});
+canvas.addEventListener('mousemove', e => {
+  // ホイールクリック長押しでパン（反転・緩やか）
+  if (e.buttons === 4) {
+    const wrap = document.getElementById('canvas-wrap');
+    const PAN_SPEED = 0.7; // 緩やか（1.0が通常）
+    wrap.scrollLeft -= e.movementX * PAN_SPEED; // 反転なので-=
+    wrap.scrollTop  -= e.movementY * PAN_SPEED;
+    return;
+  }
+  onMove(e.clientX, e.clientY);
+});
+window.addEventListener('mouseup',   e => { if(tool==='move') canvas.style.cursor='grab'; if(isDown) onUp(e.clientX, e.clientY); });
+
+// マウスホイールズーム
+document.getElementById('canvas-wrap').addEventListener('wheel', e => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  applyZoom(e.deltaY < 0 ? 1.15 : 1/1.15, e.clientX - rect.left, e.clientY - rect.top);
+}, {passive:false});
+
+// タッチ（1本指=配置/消去、2本指=移動orピンチズーム）
+let lastPinchDist = null;
+let lastPanPos = null;
+let wasPinching = false;
+let pinchCenter = null; // ピンチ中心点（canvas座標）
+
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (e.touches.length === 1) {
+    lastPinchDist = null;
+    lastPanPos = null;
+    const t = e.touches[0];
+    onDown(t.clientX, t.clientY);
+  } else if (e.touches.length === 2) {
+    // 2本指：配置キャンセル、パン＋ピンチ開始
+    isDown = false; previewPos = null; dragStartPos = null; wasPinching = true; redraw();
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    lastPinchDist = Math.hypot(dx, dy);
+    lastPanPos = {
+      x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+      y: (e.touches[0].clientY + e.touches[1].clientY) / 2
+    };
+  }
+}, {passive:false});
+
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (e.touches.length === 1 && !lastPinchDist) {
+    const t = e.touches[0];
+    onMove(t.clientX, t.clientY);
+  } else if (e.touches.length === 2) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const dist = Math.hypot(dx, dy);
+    const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+    const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+
+    const wrap = document.getElementById('canvas-wrap');
+
+    // パン（2本指移動）
+    if (lastPanPos) {
+      wrap.scrollLeft -= midX - lastPanPos.x;
+      wrap.scrollTop  -= midY - lastPanPos.y;
+    }
+
+    // ピンチズーム
+    if (lastPinchDist && Math.abs(dist - lastPinchDist) > 2) {
+      const rect = canvas.getBoundingClientRect();
+      const cx = midX - rect.left;
+      const cy = midY - rect.top;
+      pinchCenter = {x: cx, y: cy};
+      const rawRatio = dist / lastPinchDist;
+      // 変化を0.6倍に抑えて急激なズームを防ぐ
+      const smoothRatio = rawRatio > 1
+        ? 1 + (rawRatio - 1) * 0.6
+        : 1 - (1 - rawRatio) * 0.6;
+      applyZoom(smoothRatio, cx, cy);
+    }
+
+    lastPinchDist = dist;
+    lastPanPos = {x: midX, y: midY};
+  }
+}, {passive:false});
+
+canvas.addEventListener('touchend', e => {
+  e.preventDefault();
+  if (e.touches.length === 0) {
+    if (!wasPinching && isDown && lastUpPos) onUp(lastUpPos.x, lastUpPos.y);
+    lastPinchDist = null; lastPanPos = null; wasPinching = false; pinchCenter = null;
+    isDown = false; previewPos = null; dragStartPos = null; redraw();
+  } else if (e.touches.length === 1) {
+    lastPinchDist = null; lastPanPos = null; pinchCenter = null;
+    if (wasPinching) { wasPinching = false; isDown = false; previewPos = null; redraw(); }
+  }
+}, {passive:false});
+
+// ===== コントロール =====
+function setTool(t) {
+  tool = t;
+  document.getElementById('btn-draw').className    = t==='draw'    ? 'tbtn at'  : 'tbtn';
+  document.getElementById('btn-move').className    = t==='move'    ? 'tbtn mvt' : 'tbtn';
+  document.getElementById('btn-erase').className   = t==='erase'   ? 'tbtn et'  : 'tbtn';
+  document.getElementById('btn-bracket').className = t==='bracket' ? 'tbtn bkt' : 'tbtn';
+  document.getElementById('btn-board').className   = t==='board'   ? 'tbtn bdt' : 'tbtn';
+  document.getElementById('btn-hanare').className  = t==='hanare'  ? 'tbtn ht'  : 'tbtn';
+  document.getElementById('btn-memo').className    = t==='memo'    ? 'tbtn mt'  : 'tbtn';
+  document.getElementById('bracket-bar').style.display  = t==='bracket' ? 'flex' : 'none';
+  document.getElementById('board-bar').style.display    = t==='board'   ? 'flex' : 'none';
+  document.getElementById('tankan-bar').style.display   = t==='tankan'  ? 'flex' : 'none';
+  document.getElementById('memo-panel').style.display   = t==='memo'    ? 'flex' : 'none';
+  document.getElementById('btn-tankan').className = t==='tankan' ? 'tbtn at' : 'tbtn';
+  // BK・足場板・単管選択時は建地寸法バーを非表示
+  document.getElementById('waku-bar').style.display = (t==='bracket' || t==='board' || t==='tankan') ? 'none' : 'flex';
+  if (t !== 'hanare') {
+    document.getElementById('hanare-panel').style.display = 'none';
+    hanareTarget = null;
+  }
+  if (t !== 'memo') memoPos = null;
+  moveTarget = null;
+  previewPos = null; panStart = null;
+  selectedBlockIdx = null;
+  dragPlaceStart = null;
+  dragPlacePreview = [];
+  redraw();
+}
+
+function setBracketSize(s) {
+  currentBracketSize = s;
+  BRACKET_SIZES.forEach(v => {
+    document.getElementById('bk-'+v).className = v===s ? 'tbtn bkt' : 'tbtn';
+  });
+}
+
+function setBracketSpan(s) {
+  currentBracketSpan = s;
+  SPAN_OPTIONS.forEach(v => {
+    document.getElementById('bks-'+v).className = v===s ? 'tbtn bkt' : 'tbtn';
+  });
+}
+
+function setRotate(rotated) {
+  isRotated = rotated;
+  document.getElementById('rot-tate').className = !rotated ? 'tbtn mt' : 'tbtn';
+  document.getElementById('rot-yoko').className =  rotated ? 'tbtn mt' : 'tbtn';
+  updateSub();
+}
+
+function setWidth(w) {
+  currentWidth = w;
+  WIDTH_OPTIONS.forEach(v => document.getElementById('w-'+v).className = v===w ? 'tbtn aw' : 'tbtn');
+  updateSub();
+}
+
+function setSpan(s) {
+  currentSpan = s;
+  SPAN_OPTIONS.forEach(v => document.getElementById('s-'+v).className = v===s ? 'tbtn as' : 'tbtn');
+  updateSub();
+}
+
+function updateSub() {
+  document.getElementById('header-sub').textContent =
+    '幅: '+currentWidth+'mm / スパン: '+currentSpan+'mm / '+(isRotated?'横置き':'縦置き');
+}
+
+function resetZoom() {
+  const wrap = document.getElementById('canvas-wrap');
+
+  if (blocks.length > 0) {
+    // ブロックの範囲を計算
+    let minC=Infinity, minR=Infinity, maxC=-Infinity, maxR=-Infinity;
+    blocks.forEach(b => {
+      const {cols,rows} = blockSize(b);
+      minC = Math.min(minC, b.col);
+      minR = Math.min(minR, b.row);
+      maxC = Math.max(maxC, b.col + cols);
+      maxR = Math.max(maxR, b.row + rows);
+    });
+    // 余白を持たせる
+    const pad = 3;
+    minC -= pad; minR -= pad; maxC += pad; maxR += pad;
+    const spanC = maxC - minC;
+    const spanR = maxR - minR;
+
+    // 画面に収まるズームを計算
+    const aw = wrap.clientWidth  - 12;
+    const ah = wrap.clientHeight - 12;
+    const newU = Math.max(0.5, Math.floor(Math.min(aw/spanC, ah/spanR)));
+    zoomLevel = newU / BASE_U;
+    U = newU;
+    canvas.width  = Math.round(GRID_COLS * U);
+    canvas.height = Math.round(GRID_ROWS * U);
+
+    // ブロック中心にスクロール
+    wrap.scrollLeft = minC * U - (aw - spanC * U) / 2;
+    wrap.scrollTop  = minR * U - (ah - spanR * U) / 2;
+  } else {
+    // ブロックなし→中央に戻る
+    zoomLevel = 1.0;
+    U = BASE_U;
+    canvas.width  = Math.round(GRID_COLS * U);
+    canvas.height = Math.round(GRID_ROWS * U);
+    wrap.scrollLeft = (canvas.width  - wrap.clientWidth)  / 2;
+    wrap.scrollTop  = (canvas.height - wrap.clientHeight) / 2;
+  }
+
+  document.getElementById('zoom-label').textContent = Math.round(zoomLevel*100)+'%';
+  redraw();
+}
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('mode-first').classList.toggle('active', m==='first');
+  document.getElementById('mode-cont').classList.toggle('active',  m==='cont');
+}
+
+function clearAll() {
+  saveHistory();
+  blocks = [];
+  memos  = [];
+  boards = [];
+  tankans = [];
+  previewPos = null;
+  selectedBlockIdx = null;
+  dragPlaceStart = null;
+  dragPlacePreview = [];
+  redraw();
+}
+
+// ===== 統計 =====
+function updateStats() {
+  const total = blocks.reduce((s,b)=>s+b.spanMM,0);
+  document.getElementById('stat-cells').textContent = blocks.length;
+  document.getElementById('stat-spans').textContent = Math.round(total/1829);
+  document.getElementById('stat-len').textContent   = total.toLocaleString();
+}
+
+// ===== アンドゥ・リドゥ =====
+function saveHistory() {
+  undoStack.push(JSON.stringify({blocks, memos, boards}));
+  redoStack = [];
+  updateUndoButtons();
+}
+
+function undo() {
+  if (undoStack.length === 0) return;
+  redoStack.push(JSON.stringify({blocks, memos, boards}));
+  const state = JSON.parse(undoStack.pop());
+  blocks = state.blocks; memos = state.memos || []; boards = state.boards || [];
+  updateUndoButtons();
+  redraw();
+}
+
+function redo() {
+  if (redoStack.length === 0) return;
+  undoStack.push(JSON.stringify({blocks, memos, boards}));
+  const state = JSON.parse(redoStack.pop());
+  blocks = state.blocks; memos = state.memos || []; boards = state.boards || [];
+  updateUndoButtons();
+  redraw();
+}
+
+function updateUndoButtons() {
+  document.getElementById('btn-undo').className = undoStack.length > 0 ? 'tbtn' : 'tbtn disabled';
+  document.getElementById('btn-redo').className = redoStack.length > 0 ? 'tbtn' : 'tbtn disabled';
+}
+
+// ===== 単管 =====
+function drawTankan(t) {
+  const vStep = t.vSpanMM / BASE_MM * U / U * U; // px換算
+  const hStep = t.hSpanMM / BASE_MM * U / U * U;
+  const vS = t.vSpanMM / BASE_MM;
+  const hS = t.hSpanMM / BASE_MM;
+  const x0 = t.col * U;
+  const y0 = t.row * U;
+  const vC = t.vCount;
+  const hC = t.hCount;
+
+  ctx.save();
+
+  // 水平線（横方向）
+  ctx.strokeStyle = '#ff9900';
+  ctx.lineWidth = 1.5;
+  for (let r = 0; r < vC; r++) {
+    const y = y0 + r * vS * U;
+    ctx.beginPath();
+    ctx.moveTo(x0, y);
+    ctx.lineTo(x0 + (hC - 1) * hS * U, y);
+    ctx.stroke();
+  }
+  // 垂直線（縦方向）
+  for (let c = 0; c < hC; c++) {
+    const x = x0 + c * hS * U;
+    ctx.beginPath();
+    ctx.moveTo(x, y0);
+    ctx.lineTo(x, y0 + (vC - 1) * vS * U);
+    ctx.stroke();
+  }
+
+  // 支柱（交点）を●で表示
+  ctx.fillStyle = '#ff9900';
+  for (let r = 0; r < vC; r++) {
+    for (let c = 0; c < hC; c++) {
+      const x = x0 + c * hS * U;
+      const y = y0 + r * vS * U;
+      ctx.beginPath();
+      ctx.arc(x, y, Math.max(3, U * 0.15), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // 寸法表示
+  const fSize = Math.max(9, Math.min(13, U * 0.6));
+  ctx.font = 'bold ' + fSize + 'px monospace';
+  ctx.fillStyle = '#ffcc44';
+  ctx.textAlign = 'center';
+
+  // 縦寸法（左端に表示）
+  for (let r = 0; r < vC - 1; r++) {
+    const x = x0 - 6;
+    const y = y0 + (r + 0.5) * vS * U;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText(t.vSpanMM, 0, 0);
+    ctx.restore();
+  }
+  // 横寸法（上端に表示）
+  for (let c = 0; c < hC - 1; c++) {
+    const x = x0 + (c + 0.5) * hS * U;
+    const y = y0 - 6;
+    ctx.fillText(t.hSpanMM, x, y);
+  }
+
+  ctx.restore();
+}
+
+// ===== 足場板 =====
+const BOARD_WIDTH_LABEL = {305: '250', 610: '500'};
+
+function setBoardWidth(w) {
+  boardWidth = w;
+  document.getElementById('bdw-305').className = w===305 ? 'tbtn bd-active' : 'tbtn';
+  document.getElementById('bdw-610').className = w===610 ? 'tbtn bd-active' : 'tbtn';
+}
+
+function setBoardSpan(s) {
+  boardSpan = s;
+  [610,914,1219,1524,1829].forEach(v => {
+    document.getElementById('bd-'+v).className = v===s ? 'tbtn bd-active' : 'tbtn';
+  });
+}
+
+function setBoardAngle(val) {
+  boardAngle = Math.round(parseInt(val) / 15) * 15 % 360;
+  document.getElementById('board-slider').value = boardAngle;
+  document.getElementById('board-angle-label').textContent = boardAngle + '°';
+
+  // スライダー操作中はキャンバス中央にプレビューを表示
+  if (tool === 'board') {
+    const r = canvas.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    const s = getRaw(cx, cy);
+    previewPos = {col: s.col, row: s.row + previewOffset()};
+    redraw();
+
+    // 1.5秒後にプレビューをクリア
+    clearTimeout(window._boardPreviewTimer);
+    window._boardPreviewTimer = setTimeout(() => {
+      previewPos = null;
+      redraw();
+    }, 1500);
+  }
+}
+
+function drawBoard(b, alpha) {
+  const col = SPAN_COLORS[b.spanMM] || SPAN_COLORS[1829];
+  const len   = (b.spanMM  / BASE_MM) * U;
+  const thick = Math.max(2, (b.widthMM / BASE_MM) * U);
+  const x = b.col * U;
+  const y = b.row * U;
+  const rad = b.angle * Math.PI / 180;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(x, y);
+  ctx.rotate(rad);
+
+  // 板の塗り
+  ctx.fillStyle = col.fill;
+  ctx.fillRect(0, -thick/2, len, thick);
+
+  // 板の枠線
+  ctx.strokeStyle = col.line;
+  ctx.lineWidth = Math.max(1.5, U*0.06);
+  ctx.setLineDash([]);
+  ctx.strokeRect(0, -thick/2, len, thick);
+
+  // ラベル（幅表示×スパン）
+  const fs = Math.max(7, Math.min(11, thick*0.6));
+  if (len > 24 && thick > 8) {
+    ctx.fillStyle = col.line;
+    ctx.font = fs+'px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText((BOARD_WIDTH_LABEL[b.widthMM]||b.widthMM)+'×'+b.spanMM, len/2, fs*0.38);
+  }
+
+  ctx.restore();
+
+  // 消去モード時は始点に✕マークを表示（回転なし）
+  if (tool === 'erase') {
+    const r = Math.max(12, U*0.6);
+    ctx.save();
+    // 赤い円背景
+    ctx.fillStyle = '#e03e3ecc';
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI*2);
+    ctx.fill();
+    // 白い✕
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = Math.max(2, r*0.25);
+    ctx.lineCap = 'round';
+    const d = r * 0.5;
+    ctx.beginPath(); ctx.moveTo(x-d, y-d); ctx.lineTo(x+d, y+d); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x+d, y-d); ctx.lineTo(x-d, y+d); ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawBoardPreview() {
+  if (!previewPos || tool !== 'board') return;
+  const dummy = {col: previewPos.col, row: previewPos.row, spanMM: boardSpan, widthMM: boardWidth, angle: boardAngle};
+  drawBoard(dummy, 0.4);
+}
+
+// ===== メモ機能 =====
+let memos    = [];  // {col, row, text, size}
+let memoPos  = null;
+let memoDrag = null;
+// 足場板
+let boards     = [];  // {col, row, spanMM, widthMM, angle}
+let boardSpan  = 1829;
+let boardWidth = 305;
+let boardAngle = 0;
+
+// 単管
+let tankans    = [];  // {col, row, vSpanMM, hSpanMM, vCount, hCount}
+let tankanVSpan  = 1800;
+let tankanHSpan  = 900;
+let tankanVCount = 2;
+let tankanHCount = 2;
+
+function changeTankanCount(dir, d) {
+  if (dir === 'v') {
+    tankanVCount = Math.max(2, tankanVCount + d);
+    document.getElementById('tankan-v-count').textContent = tankanVCount;
+  } else {
+    tankanHCount = Math.max(2, tankanHCount + d);
+    document.getElementById('tankan-h-count').textContent = tankanHCount;
+  }
+}
+
+function applyMemo() {
+  if (!memoPos) return;
+  const text = document.getElementById('memo-input').value.trim();
+  if (!text) return;
+  const size = parseInt(document.getElementById('memo-size').value);
+  saveHistory();
+  memos.push({col: memoPos.col, row: memoPos.row, text, size});
+  document.getElementById('memo-input').value = '';
+  memoPos = null;
+  redraw();
+}
+
+function cancelMemo() {
+  memoPos = null;
+  document.getElementById('memo-input').value = '';
+  redraw();
+}
+
+function drawMemos() {
+  memos.forEach((m, i) => {
+    const x = m.col * U;
+    const y = m.row * U;
+    // サイズを px 固定（小:12, 中:18, 大:26）でズームに合わせてスケール
+    const basePx = m.size === 12 ? 12 : m.size === 16 ? 18 : 26;
+    const fs = Math.max(8, basePx * Math.max(0.5, Math.min(3, U / 8)));
+    ctx.save();
+    ctx.font = `bold ${fs}px 'Noto Sans JP', sans-serif`;
+    // ドラッグ中は半透明
+    ctx.globalAlpha = (memoDrag === i) ? 0.6 : 1.0;
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#00000088';
+    ctx.lineWidth = 3;
+    ctx.textAlign = 'left';
+    ctx.strokeText(m.text, x+2, y+fs);
+    ctx.fillText(m.text, x+2, y+fs);
+    // メモモード時はドラッグハンドル（●）を表示
+    if (tool === 'memo') {
+      ctx.fillStyle = '#22cc88';
+      ctx.beginPath();
+      ctx.arc(x, y+fs/2, Math.max(4, U*0.2), 0, Math.PI*2);
+      ctx.fill();
+    }
+    // 消去モード時は×マークを表示
+    if (tool === 'erase') {
+      ctx.fillStyle = '#e03e3e';
+      ctx.font = `bold ${Math.max(10,fs*0.8)}px monospace`;
+      ctx.fillText('✕', x-2, y+fs*0.5);
+    }
+    ctx.restore();
+  });
+}
+
+// ===== 印刷機能 =====
+function printCanvas() {
+  // 印刷用に白背景で再描画した一時キャンバスを作成
+  const wrap = document.getElementById('canvas-wrap');
+
+  // 表示中の領域を取得
+  const viewW = wrap.clientWidth;
+  const viewH = wrap.clientHeight;
+  const scrollX = wrap.scrollLeft;
+  const scrollY = wrap.scrollTop;
+
+  // 印刷用キャンバス作成（表示領域と同サイズ）
+  const printCanvas = document.createElement('canvas');
+  printCanvas.width  = viewW * window.devicePixelRatio;
+  printCanvas.height = viewH * window.devicePixelRatio;
+  const pCtx = printCanvas.getContext('2d');
+  pCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+  // 白背景
+  pCtx.fillStyle = '#ffffff';
+  pCtx.fillRect(0, 0, viewW, viewH);
+
+  // メインキャンバスをそのまま描画（スクロール位置を考慮）
+  // グリッド部分のみを白背景にするために一時的に色を変えて再描画
+  const savedFill = canvas.style.background;
+
+  // 一時的にグリッド背景を白で再描画
+  const origCtx = canvas.getContext('2d');
+
+  // 現在の描画内容をそのまま印刷用キャンバスに転写
+  // スクロール位置に合わせてオフセット
+  pCtx.drawImage(canvas, -scrollX, -scrollY, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
+
+  // DataURLに変換
+  const dataUrl = printCanvas.toDataURL('image/png');
+
+  // 印刷用スタイル
+  const style = document.createElement('style');
+  style.id = 'print-style';
+  style.textContent = `
+    @media print {
+      body > * { display:none !important; }
+      #print-frame { display:block !important; position:fixed; top:0; left:0; width:100%; height:100%; object-fit:contain; background:#fff; }
+    }
+  `;
+
+  const img = document.createElement('img');
+  img.id = 'print-frame';
+  img.src = dataUrl;
+  img.style.display = 'none';
+
+  document.head.appendChild(style);
+  document.body.appendChild(img);
+
+  // 印刷前にグリッドを白背景で再描画
+  const origBg  = '#0a0c12';
+  const origG1  = '#111620';
+  const origG2  = '#191f30';
+  const origG3  = '#1e2840';
+
+  // 白背景用に一時的に再描画
+  origCtx.fillStyle = '#ffffff';
+  origCtx.fillRect(0, 0, canvas.width, canvas.height);
+  // グリッド線（薄いグレー）
+  const step = U;
+  origCtx.lineWidth = 0.5;
+  for (let c = 0; c <= GRID_COLS; c++) {
+    origCtx.strokeStyle = (c % 30 === 0) ? '#aaaaaa' : (c % 10 === 0) ? '#cccccc' : '#e8e8e8';
+    origCtx.lineWidth   = (c % 30 === 0) ? 1.2 : (c % 10 === 0) ? 0.8 : 0.5;
+    origCtx.beginPath(); origCtx.moveTo(c*step, 0); origCtx.lineTo(c*step, GRID_ROWS*step); origCtx.stroke();
+  }
+  for (let r = 0; r <= GRID_ROWS; r++) {
+    origCtx.strokeStyle = (r % 30 === 0) ? '#aaaaaa' : (r % 10 === 0) ? '#cccccc' : '#e8e8e8';
+    origCtx.lineWidth   = (r % 30 === 0) ? 1.2 : (r % 10 === 0) ? 0.8 : 0.5;
+    origCtx.beginPath(); origCtx.moveTo(0, r*step); origCtx.lineTo(GRID_COLS*step, r*step); origCtx.stroke();
+  }
+  // ブロック・メモ等を再描画
+  blocks.forEach(b => drawBlock(b, 1.0, false));
+  tankans.forEach(t => drawTankan(t));
+  boards.forEach(b => drawBoard(b, 1.0));
+  memos.forEach(m => drawMemo(m));
+
+  // 印刷用画像を再生成
+  const printDataUrl = printCanvas.getContext('2d').canvas.toDataURL
+    ? printCanvas.toDataURL('image/png') : dataUrl;
+
+  // 白背景再描画後のキャンバス内容で印刷
+  const pC2 = document.createElement('canvas');
+  pC2.width  = viewW * window.devicePixelRatio;
+  pC2.height = viewH * window.devicePixelRatio;
+  const pCtx2 = pC2.getContext('2d');
+  pCtx2.fillStyle = '#ffffff';
+  pCtx2.fillRect(0, 0, pC2.width, pC2.height);
+  pCtx2.drawImage(canvas, -scrollX * window.devicePixelRatio, -scrollY * window.devicePixelRatio);
+  img.src = pC2.toDataURL('image/png');
+
+  setTimeout(() => {
+    window.print();
+    // 印刷後に元の暗いテーマに戻す
+    setTimeout(() => {
+      style.remove();
+      img.remove();
+      redraw(); // 元の色で再描画
+    }, 1000);
+  }, 300);
+}
+
+// ===== 離れ機能 =====
+let hanareTarget = null;
+let hanareScope  = 'single'; // 'single' or 'line'
+let hanareDir    = 'top';
+let hanareCorner = 'tl'; // 'tl','tr','bl','br'
+
+// 角ごとの方向マップ
+const CORNER_DIRS = {
+  tl: ['top', 'left'],
+  tr: ['top', 'right'],
+  bl: ['bottom', 'left'],
+  br: ['bottom', 'right'],
+};
+
+function setHanareCorner(corner) {
+  hanareCorner = corner;
+  ['tl','tr','bl','br'].forEach(c => {
+    document.getElementById('hanare-corner-'+c).className =
+      c===corner ? 'hanare-scope-btn active' : 'hanare-scope-btn';
+  });
+
+  // その角に対応する2方向ボタンを表示
+  const dirs = CORNER_DIRS[corner];
+  ['top','right','bottom','left'].forEach(d => {
+    document.getElementById('hanare-dir-'+d).style.display = dirs.includes(d) ? '' : 'none';
+  });
+
+  // デフォルトで最初の方向を選択
+  setHanareDir(dirs[0]);
+}
+
+function setHanareDir(d) {
+  hanareDir = d;
+  ['top','right','bottom','left'].forEach(dir => {
+    const el = document.getElementById('hanare-dir-'+dir);
+    if (el.style.display !== 'none') {
+      el.className = d===dir ? 'hanare-scope-btn active' : 'hanare-scope-btn';
+    }
+  });
+  // 現在の角_方向の既存値を入力欄に反映
+  if (hanareTarget !== null) {
+    const b = blocks[hanareTarget];
+    const key = hanareCorner + '_' + d;
+    const val = (b.hanares && b.hanares[key] != null) ? b.hanares[key] : '';
+    document.getElementById('hanare-input').value = val;
+  }
+}
+
+function openHanarePanel(blockIdx) {
+  hanareTarget = blockIdx;
+  const panel = document.getElementById('hanare-panel');
+  panel.style.display = 'flex';
+
+  // デフォルト角は左上
+  setHanareCorner('tl');
+  document.getElementById('hanare-input').value = '';
+  redraw();
+}
+
+function setHanareQuick(val) {
+  document.getElementById('hanare-input').value = val;
+  applyHanare();
+}
+
+function applyHanare() {
+  if (hanareTarget === null) return;
+  const rawVal = document.getElementById('hanare-input').value;
+  const val = rawVal === '' || rawVal === '0' ? null : parseFloat(rawVal);
+  saveHistory();
+
+  const key = hanareCorner + '_' + hanareDir; // 例: 'tl_top', 'br_right'
+  const blk = blocks[hanareTarget];
+  if (!blk.hanares) blk.hanares = {};
+  if (val === null) {
+    delete blk.hanares[key];
+  } else {
+    blk.hanares[key] = val;
+  }
+  delete blk.hanare;
+  delete blk.hanareDir;
+
+  document.getElementById('hanare-input').value = '';
+  redraw();
+}
+
+function cancelHanare() {
+  document.getElementById('hanare-panel').style.display = 'none';
+  hanareTarget = null;
+  redraw();
+}
+
+// ===== 人工管理 =====
+const PROG_KEY = 'ashiba_progress';
+let currentSite = null;
+let siteRatio = 6; // 現場追加時の比率
+
+function getProgData() {
+  try { return JSON.parse(localStorage.getItem(PROG_KEY) || '{}'); }
+  catch(e) { return {}; }
+}
+function saveProgData(data) {
+  localStorage.setItem(PROG_KEY, JSON.stringify(data));
+}
+
+function buildProgSelect() {
+  const data = getProgData();
+  const sel = document.getElementById('prog-site-select');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">-- 現場を選択 --</option>';
+  Object.keys(data).forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name; opt.textContent = name;
+    if (name === cur) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+let liveRatio = 6; // サマリー上での比率変更用
+
+function changeSiteRatioNew(d) {
+  siteRatio = Math.min(9, Math.max(1, siteRatio + d));
+  document.getElementById('site-ratio-kumi').textContent = siteRatio;
+  document.getElementById('site-ratio-kai').textContent  = 10 - siteRatio;
+}
+
+function changeSiteRatioLive(d) {
+  liveRatio = Math.min(9, Math.max(1, liveRatio + d));
+  document.getElementById('prog-ratio-kumi').textContent = liveRatio;
+  document.getElementById('prog-ratio-kai').textContent  = 10 - liveRatio;
+}
+
+function applyRatioLive() {
+  if (!currentSite) return;
+  const data = getProgData();
+  if (!data[currentSite]) return;
+  const target = data[currentSite].target;
+  data[currentSite].ratio      = liveRatio;
+  data[currentSite].kumiTarget = parseFloat((target * liveRatio / 10).toFixed(2));
+  data[currentSite].kaiTarget  = parseFloat((target * (10 - liveRatio) / 10).toFixed(2));
+  saveProgData(data);
+  updateProgView();
+}
+function showAddSite() {
+  document.getElementById('prog-add-form').style.display = 'block';
+  siteRatio = 6;
+  document.getElementById('site-ratio-kumi').textContent = 6;
+  document.getElementById('site-ratio-kai').textContent  = 4;
+  document.getElementById('prog-site-calc-result').style.display = 'none';
+  document.getElementById('prog-sqm').value   = '';
+  document.getElementById('prog-tanka').value = '';
+  document.getElementById('prog-joyo').value  = '';
+  document.getElementById('prog-site-name').value = '';
+}
+function hideAddSite() { document.getElementById('prog-add-form').style.display='none'; }
+
+function calcSiteTarget() {
+  const sqm   = parseFloat(document.getElementById('prog-sqm').value);
+  const tanka = parseFloat(document.getElementById('prog-tanka').value);
+  const joyo  = parseFloat(document.getElementById('prog-joyo').value);
+  if (!sqm || !tanka || !joyo) {
+    document.getElementById('prog-site-calc-result').style.display = 'none';
+    return;
+  }
+  const koji  = sqm * tanka;
+  const total = koji / joyo;
+  document.getElementById('prog-koji-disp').textContent   = '¥' + Math.round(koji).toLocaleString();
+  document.getElementById('prog-target-auto').textContent = total.toFixed(2) + ' 人工';
+  document.getElementById('prog-site-calc-result').style.display = 'block';
+}
+
+function addSite() {
+  const name  = document.getElementById('prog-site-name').value.trim();
+  const sqm   = parseFloat(document.getElementById('prog-sqm').value);
+  const tanka = parseFloat(document.getElementById('prog-tanka').value);
+  const joyo  = parseFloat(document.getElementById('prog-joyo').value);
+  if (!name)              { alert('現場名を入力してください'); return; }
+  if (!sqm || !tanka || !joyo) { alert('平米数・平米単価・常用金額を入力してください'); return; }
+
+  const target     = parseFloat((sqm * tanka / joyo).toFixed(2));
+  const kumiTarget = parseFloat((target * siteRatio / 10).toFixed(2));
+  const kaiTarget  = parseFloat((target * (10-siteRatio) / 10).toFixed(2));
+
+  const data = getProgData();
+  if (data[name]) { alert('同じ名前の現場がすでにあります'); return; }
+  data[name] = { target, kumiTarget, kaiTarget, ratio: siteRatio, sqm, tanka, joyo, records: [] };
+  saveProgData(data);
+
+  hideAddSite();
+  buildProgSelect();
+  document.getElementById('prog-site-select').value = name;
+  selectSite();
+}
+
+function selectSite() {
+  const name = document.getElementById('prog-site-select').value;
+  currentSite = name || null;
+  const hasSite = !!currentSite;
+  document.getElementById('prog-summary').style.display         = hasSite ? 'block' : 'none';
+  document.getElementById('prog-input-section').style.display   = hasSite ? 'block' : 'none';
+  document.getElementById('prog-history-section').style.display = hasSite ? 'block' : 'none';
+  document.getElementById('prog-delete-section').style.display  = hasSite ? 'block' : 'none';
+  if (!hasSite) return;
+
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth()+1).padStart(2,'0');
+  const dd = String(today.getDate()).padStart(2,'0');
+  document.getElementById('prog-date').value = `${yyyy}-${mm}-${dd}`;
+
+  // 比率表示を初期化
+  const sdata = getProgData();
+  liveRatio = (sdata[name] && sdata[name].ratio) ? sdata[name].ratio : 6;
+  document.getElementById('prog-ratio-kumi').textContent = liveRatio;
+  document.getElementById('prog-ratio-kai').textContent  = 10 - liveRatio;
+
+  updateProgView();
+}
+
+function updateProgView() {
+  if (!currentSite) return;
+  const data = getProgData();
+  const site = data[currentSite];
+  if (!site) return;
+
+  const kumiUsed = site.records.filter(r=>r.type==='kumi').reduce((s,r)=>s+r.val,0);
+  const kaiUsed  = site.records.filter(r=>r.type==='kai').reduce((s,r)=>s+r.val,0);
+  const totalUsed = kumiUsed + kaiUsed;
+  const remain    = site.target - totalUsed;
+  const pct       = Math.min(100, Math.round(totalUsed / site.target * 100));
+
+  // 合計
+  document.getElementById('prog-summary-name').textContent = currentSite;
+  // 現場の基本情報を表示
+  const infoEl = document.getElementById('prog-site-info');
+  if (infoEl) {
+    if (site.sqm && site.tanka && site.joyo) {
+      infoEl.textContent = site.sqm + '㎡ ／ 単価 ¥' + site.tanka.toLocaleString() + ' ／ 常用 ¥' + site.joyo.toLocaleString();
+      infoEl.style.display = 'block';
+    } else {
+      infoEl.style.display = 'none';
+    }
+  }
+  document.getElementById('prog-target-disp').textContent  = site.target.toFixed(2);
+  document.getElementById('prog-used-disp').textContent    = totalUsed.toFixed(2);
+  document.getElementById('prog-remain-disp').textContent  = remain.toFixed(2);
+  document.getElementById('prog-remain-disp').style.color  = remain < 0 ? 'var(--danger)' : '#22cc88';
+  document.getElementById('prog-bar').style.width          = pct + '%';
+  document.getElementById('prog-bar').style.background     = pct >= 100 ? 'var(--danger)' : 'var(--accent2)';
+  document.getElementById('prog-bar-label').textContent    = pct + '% 消化';
+
+  // 組立・解体
+  const kumiTarget  = site.kumiTarget != null ? site.kumiTarget : parseFloat((site.target * 0.6).toFixed(2));
+  const kaiTarget   = site.kaiTarget  != null ? site.kaiTarget  : parseFloat((site.target * 0.4).toFixed(2));
+  const kumiRemain  = kumiTarget - kumiUsed;
+  const kaiRemain   = kaiTarget  - kaiUsed;
+
+  document.getElementById('prog-kumi-target').textContent = kumiTarget.toFixed(2);
+  document.getElementById('prog-kumi-used').textContent   = kumiUsed.toFixed(2);
+  document.getElementById('prog-kumi-remain').textContent = kumiRemain.toFixed(2);
+  document.getElementById('prog-kumi-remain').style.color = kumiRemain < 0 ? 'var(--danger)' : '#22cc88';
+  document.getElementById('prog-kai-target').textContent  = kaiTarget.toFixed(2);
+  document.getElementById('prog-kai-used').textContent    = kaiUsed.toFixed(2);
+  document.getElementById('prog-kai-remain').textContent  = kaiRemain.toFixed(2);
+  document.getElementById('prog-kai-remain').style.color  = kaiRemain < 0 ? 'var(--danger)' : '#22cc88';
+
+  // 履歴
+  const sorted = [...site.records].sort((a,b)=>b.date.localeCompare(a.date));
+  const el = document.getElementById('prog-history-list');
+  if (sorted.length === 0) {
+    el.innerHTML = '<div style="color:var(--text-dim);font-size:13px;padding:12px 0;">まだ入力がありません</div>';
+  } else {
+    el.innerHTML = sorted.map((r,i) => {
+      const typeLabel = r.type==='kumi' ? '🔧 組立' : '🔨 解体';
+      const typeColor = r.type==='kumi' ? '#22cc88' : '#00d4ff';
+      return '<div class="prog-history-item">'+
+        '<div>'+
+        '<div class="prog-history-date">📅 '+r.date.replace(/-/g,'/')+'</div>'+
+        '<div style="font-size:11px;color:'+typeColor+';">'+typeLabel+'</div>'+
+        '</div>'+
+        '<div style="display:flex;align-items:center;gap:8px;">'+
+        '<div class="prog-history-val">'+r.val.toFixed(2)+' 人工</div>'+
+        '<button class="prog-history-del" onclick="deleteRecord('+i+')">✕</button>'+
+        '</div></div>';
+    }).join('');
+  }
+}
+
+function addNinku() {
+  const date = document.getElementById('prog-date').value;
+  const val  = parseFloat(document.getElementById('prog-ninku').value);
+  const type = document.getElementById('prog-type').value;
+  if (!date) { alert('日付を選択してください'); return; }
+  if (!val || val <= 0) { alert('人工数を入力してください'); return; }
+
+  const data = getProgData();
+  if (!data[currentSite]) return;
+  data[currentSite].records.push({ date, val, type });
+  saveProgData(data);
+  document.getElementById('prog-ninku').value = '';
+  updateProgView();
+}
+
+function deleteRecord(idx) {
+  const data = getProgData();
+  if (!data[currentSite]) return;
+  const sorted = [...data[currentSite].records].sort((a,b)=>b.date.localeCompare(a.date));
+  const target = sorted[idx];
+  data[currentSite].records = data[currentSite].records.filter(r =>
+    !(r.date===target.date && r.val===target.val && r.type===target.type)
+  );
+  saveProgData(data);
+  updateProgView();
+}
+
+function deleteSite() {
+  if (!currentSite) return;
+  const btn = document.querySelector('.calc-reset-btn[onclick="deleteSite()"]');
+  if (!btn) return;
+
+  // 確認UIに差し替え
+  const wrap = btn.parentNode;
+  btn.style.display = 'none';
+  const confirmEl = document.createElement('div');
+  confirmEl.id = 'delete-confirm';
+  confirmEl.innerHTML =
+    '<div style="font-size:13px;color:var(--danger);text-align:center;margin-bottom:8px;">「'+currentSite+'」を削除しますか？</div>'+
+    '<div style="display:flex;gap:8px;">'+
+    '<button onclick="deleteSiteConfirm()" style="flex:1;padding:10px;background:var(--danger);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:\'Noto Sans JP\',sans-serif;cursor:pointer;">はい</button>'+
+    '<button onclick="deleteSiteCancel()" style="flex:1;padding:10px;background:var(--surface2);color:var(--text);border:1px solid var(--sep);border-radius:8px;font-size:13px;font-weight:700;font-family:\'Noto Sans JP\',sans-serif;cursor:pointer;">いいえ</button>'+
+    '</div>';
+  wrap.appendChild(confirmEl);
+}
+
+function deleteSiteConfirm() {
+  const data = getProgData();
+  delete data[currentSite];
+  saveProgData(data);
+  currentSite = null;
+  buildProgSelect();
+  selectSite();
+  // 確認UIを片付け
+  const el = document.getElementById('delete-confirm');
+  if (el) el.remove();
+  const btn = document.querySelector('.calc-reset-btn[onclick="deleteSite()"]');
+  if (btn) btn.style.display = '';
+}
+
+function deleteSiteCancel() {
+  const el = document.getElementById('delete-confirm');
+  if (el) el.remove();
+  const btn = document.querySelector('.calc-reset-btn[onclick="deleteSite()"]');
+  if (btn) btn.style.display = '';
+}
+
+// ===== 人工計算 =====
+let kumiRatio = 6; // デフォルト6:4
+
+function changeRatio(d) {
+  kumiRatio = Math.min(9, Math.max(1, kumiRatio + d));
+  const kaiRatio = 10 - kumiRatio;
+  document.getElementById('ratio-kumi').textContent = kumiRatio;
+  document.getElementById('ratio-kai').textContent  = kaiRatio;
+  calcNinku();
+}
+
+function calcNinku() {
+  const sqm   = parseFloat(document.getElementById('calc-sqm').value);
+  const tanka = parseFloat(document.getElementById('calc-tanka').value);
+  const joyo  = parseFloat(document.getElementById('calc-joyo').value);
+
+  if (!sqm || !tanka || !joyo) {
+    document.getElementById('calc-result').style.display = 'none';
+    return;
+  }
+
+  const kumiPct = kumiRatio / 10;
+  const kaiPct  = (10 - kumiRatio) / 10;
+
+  const koji  = sqm * tanka;
+  const total = koji / joyo;
+  const kumi  = total * kumiPct;
+  const kai   = total * kaiPct;
+
+  document.getElementById('res-koji').textContent    = '¥' + Math.round(koji).toLocaleString();
+  document.getElementById('res-total').textContent   = total.toFixed(2) + ' 人工';
+  document.getElementById('res-kumi').textContent    = kumi.toFixed(2) + ' 人工';
+  document.getElementById('res-kai').textContent     = kai.toFixed(2) + ' 人工';
+  document.getElementById('res-kumi-pct').textContent = kumiRatio * 10;
+  document.getElementById('res-kai-pct').textContent  = (10 - kumiRatio) * 10;
+  document.getElementById('calc-result').style.display = 'block';
+  document.getElementById('reflect-btn').style.display = 'block';
+}
+
+function resetCalc() {
+  document.getElementById('calc-sqm').value   = '';
+  document.getElementById('calc-tanka').value = '';
+  document.getElementById('calc-joyo').value  = '';
+  document.getElementById('calc-result').style.display = 'none';
+  document.getElementById('reflect-btn').style.display = 'none';
+  kumiRatio = 6;
+  document.getElementById('ratio-kumi').textContent = 6;
+  document.getElementById('ratio-kai').textContent  = 4;
+}
+
+function reflectToProgress() {
+  const sqm   = parseFloat(document.getElementById('calc-sqm').value);
+  const tanka = parseFloat(document.getElementById('calc-tanka').value);
+  const joyo  = parseFloat(document.getElementById('calc-joyo').value);
+  if (!sqm || !tanka || !joyo) return;
+
+  // 人工管理タブに切り替え
+  switchTab('progress');
+
+  // フォームに値をセット
+  document.getElementById('prog-sqm').value   = sqm;
+  document.getElementById('prog-tanka').value = tanka;
+  document.getElementById('prog-joyo').value  = joyo;
+  document.getElementById('site-ratio-kumi').textContent = kumiRatio;
+  document.getElementById('site-ratio-kai').textContent  = 10 - kumiRatio;
+  siteRatio = kumiRatio;
+  document.getElementById('prog-add-form').style.display = 'block';
+  calcSiteTarget();
+  document.getElementById('prog-add-form').scrollIntoView({behavior:'smooth'});
+}
+
+// ===== 材料集計 =====
+let shuukeiDan = 3;
+let shuukeiBresuPerDan = 2; // 横並び独立スパンのブレス（1段あたり）デフォルト2本
+
+// インチサイズ対応表（mm → インチ表記）
+const INCH_LABEL = {
+  610:  '610mm（2スパン）',
+  914:  '914mm（3スパン）',
+  1219: '1219mm（4スパン）',
+  1524: '1524mm（5スパン）',
+  1829: '1829mm（6スパン）',
+};
+
+// 枠・布板・ブレスの行定義
+const SHUUKEI_ITEMS = [
+  // 枠（幅別）
+  { key:'waku_610',  label:'枠',   size:'610mm',  type:'waku', mm:610  },
+  { key:'waku_914',  label:'枠',   size:'914mm',  type:'waku', mm:914  },
+  { key:'waku_1219', label:'枠',   size:'1219mm', type:'waku', mm:1219 },
+  // ブレス（スパン別）
+  { key:'bure_610',  label:'ブレス', size:'610mm',  type:'bure', mm:610  },
+  { key:'bure_914',  label:'ブレス', size:'914mm',  type:'bure', mm:914  },
+  { key:'bure_1219', label:'ブレス', size:'1219mm', type:'bure', mm:1219 },
+  { key:'bure_1524', label:'ブレス', size:'1524mm', type:'bure', mm:1524 },
+  { key:'bure_1829', label:'ブレス', size:'1829mm', type:'bure', mm:1829 },
+  // アンチ500mm（スパン別）
+  { key:'anti_610',  label:'アンチ', size:'610mm',  type:'anti', mm:610  },
+  { key:'anti_914',  label:'アンチ', size:'914mm',  type:'anti', mm:914  },
+  { key:'anti_1219', label:'アンチ', size:'1219mm', type:'anti', mm:1219 },
+  { key:'anti_1524', label:'アンチ', size:'1524mm', type:'anti', mm:1524 },
+  { key:'anti_1829', label:'アンチ', size:'1829mm', type:'anti', mm:1829 },
+  // ハーフ250mm（スパン別）
+  { key:'half_610',  label:'ハーフ', size:'610mm',  type:'half', mm:610  },
+  { key:'half_914',  label:'ハーフ', size:'914mm',  type:'half', mm:914  },
+  { key:'half_1219', label:'ハーフ', size:'1219mm', type:'half', mm:1219 },
+  { key:'half_1524', label:'ハーフ', size:'1524mm', type:'half', mm:1524 },
+  { key:'half_1829', label:'ハーフ', size:'1829mm', type:'half', mm:1829 },
+];
+
+function openShuukei() {
+  if (blocks.length === 0) { alert('図面にブロックがありません'); return; }
+  shuukeiDan = 1;
+  document.getElementById('shuukei-dan-val').textContent = 1;
+  document.getElementById('shuukei-result-section').style.display = 'none';
+  calcShuukeiPerDan(); // 開いた瞬間に1段分を自動計算
+  document.getElementById('shuukei-overlay').classList.add('visible');
+}
+function closeShuukei() {
+  document.getElementById('shuukei-overlay').classList.remove('visible');
+}
+function closeShuukeiOverlay(e) {
+  if (e.target === document.getElementById('shuukei-overlay')) closeShuukei();
+}
+
+function changeShuukeiDan(d) {
+  shuukeiDan = Math.max(1, shuukeiDan + d);
+  document.getElementById('shuukei-dan-val').textContent = shuukeiDan;
+  // 段数が変わったら結果も再計算
+  if (document.getElementById('shuukei-result-section').style.display !== 'none') {
+    calcShuukeiTotal();
+  }
+}
+
+// グループ化ロジック（共通）
+function getBlockRect(b) {
+  const {cols, rows} = blockSize(b);
+  return { c1: b.col, r1: b.row, c2: b.col + cols, r2: b.row + rows };
+}
+
+function getShuukeiGroups() {
+  const EPS_H = 1.5;  // 横方向の許容誤差
+
+  function adjacentInfo(a, b) {
+    const ra = getBlockRect(a);
+    const rb = getBlockRect(b);
+    const epsV = 0.5;
+    const rowOverlap = Math.min(ra.r2, rb.r2) - Math.max(ra.r1, rb.r1);
+    const rowCheck = (a.rotated && b.rotated)
+      ? (Math.abs(ra.r1 - rb.r1) < 1.5)
+      : (rowOverlap > epsV);
+    // 横方向：幅が違っても横並びになれる（異幅ダブル対応）
+    const adjH = (Math.abs(ra.c2 - rb.c1) < EPS_H || Math.abs(rb.c2 - ra.c1) < EPS_H) &&
+                 rowCheck;
+    // 縦方向：同じ幅のみ縦連続
+    const adjV = (Math.abs(ra.r2 - rb.r1) < epsV || Math.abs(rb.r2 - ra.r1) < epsV) &&
+                 (Math.min(ra.c2, rb.c2) - Math.max(ra.c1, rb.c1) > epsV) &&
+                 a.widthMM === b.widthMM;
+    if (adjH) return 'H';
+    if (adjV) return 'V';
+    return null;
+  }
+
+  const parent = blocks.map((_, i) => i);
+  function find(i) { return parent[i] === i ? i : (parent[i] = find(parent[i])); }
+  function unite(i, j) { parent[find(i)] = find(j); }
+
+  // 各ブロックの「横に隣接しているブロック」を記録
+  const hNeighbors = blocks.map(() => new Set()); // 横隣接
+
+  for (let i = 0; i < blocks.length; i++) {
+    for (let j = i + 1; j < blocks.length; j++) {
+      const dir = adjacentInfo(blocks[i], blocks[j]);
+      if (dir) {
+        unite(i, j);
+        if (dir === 'H') {
+          hNeighbors[i].add(j);
+          hNeighbors[j].add(i);
+        }
+      }
+    }
+  }
+
+  const groups = {};
+  blocks.forEach((b, i) => {
+    const g = find(i);
+    if (!groups[g]) groups[g] = { blocks: [], hNeighbors };
+    groups[g].blocks.push({ block: b, idx: i });
+  });
+  return Object.values(groups);
+}
+
+// 1段分の数量を計算してテーブルに表示
+function calcShuukeiPerDan() {
+  const groups = getShuukeiGroups();
+  const wakuCount = {}, bureCount = {}, antiCount = {}, halfCount = {};
+
+  groups.forEach(grp => {
+    const blkInfos   = grp.blocks;
+    const hNeigh     = grp.hNeighbors;
+    const spanTotal  = blkInfos.length;
+    const w          = blkInfos[0].block.widthMM;
+    const isConnected = blkInfos.length >= 2;
+
+    // ===== 枠の計算：幅ごとに縦列グループを作る =====
+    const blkIdxList = blkInfos.map(bi => bi.idx);
+    const isRotatedGroup = blkInfos[0].block.rotated;
+    const COL_EPS = 1.5;
+
+    function isVerticallyConnected(i, j) {
+      const ra = getBlockRect(blocks[i]);
+      const rb = getBlockRect(blocks[j]);
+      const epsV = 0.5;
+      if (isRotatedGroup) {
+        const sameRow = Math.abs(ra.r1 - rb.r1) < COL_EPS;
+        const adjH = (Math.abs(ra.c2 - rb.c1) < epsV || Math.abs(rb.c2 - ra.c1) < epsV) &&
+                     (Math.min(ra.r2, rb.r2) - Math.max(ra.r1, rb.r1) > COL_EPS);
+        return sameRow && adjH && blocks[i].widthMM === blocks[j].widthMM;
+      } else {
+        const sameCol = Math.abs(ra.c1 - rb.c1) < COL_EPS;
+        const adjV = (Math.abs(ra.r2 - rb.r1) < epsV || Math.abs(rb.r2 - ra.r1) < epsV) &&
+                     (Math.min(ra.c2, rb.c2) - Math.max(ra.c1, rb.c1) > COL_EPS);
+        return sameCol && adjV && blocks[i].widthMM === blocks[j].widthMM;
+      }
+    }
+
+    // 幅ごとにブロックを分けて縦列計算
+    const widthMap = {};
+    blkIdxList.forEach(idx => {
+      const ww = blocks[idx].widthMM;
+      if (!widthMap[ww]) widthMap[ww] = [];
+      widthMap[ww].push(idx);
+    });
+
+    Object.entries(widthMap).forEach(([ww, idxList]) => {
+      const colVisited = new Set();
+      idxList.forEach(idx => {
+        if (colVisited.has(idx)) return;
+        const colGrp = [];
+        const queue = [idx];
+        while (queue.length > 0) {
+          const cur = queue.shift();
+          if (colVisited.has(cur)) continue;
+          colVisited.add(cur);
+          colGrp.push(cur);
+          idxList.forEach(nb => {
+            if (!colVisited.has(nb) && isVerticallyConnected(cur, nb)) queue.push(nb);
+          });
+        }
+        wakuCount[Number(ww)] = (wakuCount[Number(ww)] || 0) + colGrp.length + 1;
+      });
+    });
+
+    // ブレス：各ブロックの「隣接していない面」の数を数える（全ブロックを対象に確認）
+    blkInfos.forEach(({block: b, idx}) => {
+      const s = b.spanMM;
+      const ra = getBlockRect(b);
+      let openFaces = 0;
+
+      if (b.rotated) {
+        const hasTop    = blocks.some((nb, nidx) => nidx !== idx && (() => {
+          const rb = getBlockRect(nb);
+          return Math.abs(ra.r1 - rb.r2) < 1.5 && Math.abs(ra.c1 - rb.c1) < 1.5;
+        })());
+        const hasBottom = blocks.some((nb, nidx) => nidx !== idx && (() => {
+          const rb = getBlockRect(nb);
+          return Math.abs(ra.r2 - rb.r1) < 1.5 && Math.abs(ra.c1 - rb.c1) < 1.5;
+        })());
+        if (!hasTop)    openFaces++;
+        if (!hasBottom) openFaces++;
+      } else {
+        const hasLeft  = blocks.some((nb, nidx) => nidx !== idx && (() => {
+          const rb = getBlockRect(nb);
+          return Math.abs(ra.c1 - rb.c2) < 1.5 && Math.abs(ra.r1 - rb.r1) < 1.5;
+        })());
+        const hasRight = blocks.some((nb, nidx) => nidx !== idx && (() => {
+          const rb = getBlockRect(nb);
+          return Math.abs(ra.c2 - rb.c1) < 1.5 && Math.abs(ra.r1 - rb.r1) < 1.5;
+        })());
+        if (!hasLeft)  openFaces++;
+        if (!hasRight) openFaces++;
+      }
+      bureCount[s] = (bureCount[s] || 0) + openFaces;
+    });
+
+    // ===== アンチ・ハーフの計算 =====
+    // ダブル（横並び）の場合は幅の組み合わせで枚数が変わる
+    // 横並びサブグループを抽出
+    const hVisitedA = new Set();
+    const hGroupsA = [];
+    blkIdxList.forEach(idx => {
+      if (hVisitedA.has(idx)) return;
+      const hGrp = [];
+      const queue = [idx];
+      while (queue.length > 0) {
+        const cur = queue.shift();
+        if (hVisitedA.has(cur)) continue;
+        hVisitedA.add(cur);
+        if (blkIdxList.includes(cur)) hGrp.push(cur);
+        hNeigh[cur].forEach(nb => {
+          if (!hVisitedA.has(nb) && blkIdxList.includes(nb)) queue.push(nb);
+        });
+      }
+      hGroupsA.push(hGrp);
+    });
+
+    // ダブルパターンのアンチ・ハーフ枚数表
+    function getDoubleAntiHalf(widths) {
+      const key = [...widths].sort((a,b)=>a-b).join('x');
+      const table = {
+        // ダブル
+        '610x610':        {anti:1, half:2},
+        '610x914':        {anti:3, half:0},
+        '610x1219':       {anti:3, half:1},
+        '914x914':        {anti:3, half:1},
+        '914x1219':       {anti:4, half:0},
+        '1219x1219':      {anti:4, half:1},
+        // トリプル
+        '610x610x610':    {anti:3, half:1},
+        '610x610x914':    {anti:4, half:0},
+        '610x610x1219':   {anti:5, half:0},
+        '610x914x914':    {anti:5, half:0},
+        '610x914x1219':   {anti:5, half:1},
+        '610x1219x1219':  {anti:6, half:0},
+        '914x914x914':    {anti:5, half:1},
+        '914x914x1219':   {anti:6, half:0},
+        '914x1219x1219':  {anti:6, half:1},
+        '1219x1219x1219': {anti:7, half:0},
+      };
+      return table[key] || null;
+    }
+
+    hGroupsA.forEach(hGrp => {
+      if (hGrp.length === 1) {
+        // 単独スパン
+        const b = blocks[hGrp[0]];
+        const s = b.spanMM;
+        let antiMai = 0, halfMai = 0;
+        if      (w === 610)  { antiMai = 1; halfMai = 0; }
+        else if (w === 914)  { antiMai = 1; halfMai = 1; }
+        else if (w === 1219) { antiMai = 2; halfMai = 0; }
+        antiCount[s] = (antiCount[s] || 0) + antiMai;
+        halfCount[s] = (halfCount[s] || 0) + halfMai;
+      } else {
+        // ダブル・トリプル（横並び複数スパン）
+        const widths = hGrp.map(idx => blocks[idx].widthMM);
+        const s = blocks[hGrp[0]].spanMM;
+        const dbl = getDoubleAntiHalf(widths);
+        if (dbl) {
+          antiCount[s] = (antiCount[s] || 0) + dbl.anti;
+          halfCount[s] = (halfCount[s] || 0) + dbl.half;
+        } else {
+          // テーブルにないパターンは個別計算
+          hGrp.forEach(idx => {
+            const b = blocks[idx];
+            const s2 = b.spanMM;
+            let antiMai = 0, halfMai = 0;
+            if      (b.widthMM === 610)  { antiMai = 1; halfMai = 0; }
+            else if (b.widthMM === 914)  { antiMai = 1; halfMai = 1; }
+            else if (b.widthMM === 1219) { antiMai = 2; halfMai = 0; }
+            antiCount[s2] = (antiCount[s2] || 0) + antiMai;
+            halfCount[s2] = (halfCount[s2] || 0) + halfMai;
+          });
+        }
+      }
+    });
+  });
+
+  // デバッグ
+  const allGroups = getShuukeiGroups();
+  const debugInfo = blocks.map((b,i) => `[${i}]col=${b.col.toFixed(1)},row=${b.row.toFixed(1)},rot=${b.rotated?1:0}`).join(' / ');
+  const hInfo = allGroups.map((grp,gi) => {
+    const idxList = grp.blocks.map(bi=>bi.idx);
+    const hNeigh = grp.hNeighbors;
+    const hPairs = idxList.filter(i=>hNeigh[i].size>0).map(i=>`${i}→[${[...hNeigh[i]].join(',')}]`);
+    return `G${gi}(${idxList.join(',')}) H:${hPairs.join(' ')||'なし'}`;
+  }).join(' / ');
+  const debugEl = document.getElementById('shuukei-debug');
+  if (debugEl) debugEl.textContent = debugInfo + ' | ' + hInfo;
+
+  const tbody = document.getElementById('shuukei-tbody');
+  const rows = SHUUKEI_ITEMS.map(item => {
+    let val = 0;
+    if (item.type === 'waku') val = wakuCount[item.mm] || 0;
+    if (item.type === 'bure') val = bureCount[item.mm] || 0;
+    if (item.type === 'anti') val = antiCount[item.mm] || 0;
+    if (item.type === 'half') val = halfCount[item.mm] || 0;
+    if (val === 0) return ''; // 0は非表示
+    return `<tr>
+      <td>${item.label}</td>
+      <td>${item.size}</td>
+      <td>
+        <div style="display:flex;align-items:center;justify-content:center;gap:4px;">
+          <button onclick="changeShuukeiItemVal('si-${item.key}',-1)" style="width:24px;height:24px;border-radius:50%;border:none;background:var(--surface);color:var(--text);font-size:14px;cursor:pointer;flex-shrink:0;">−</button>
+          <input type="number" inputmode="numeric" id="si-${item.key}" value="${val}" min="0" style="width:50px;">
+          <button onclick="changeShuukeiItemVal('si-${item.key}',1)" style="width:24px;height:24px;border-radius:50%;border:none;background:var(--accent2);color:#000;font-size:14px;cursor:pointer;flex-shrink:0;">＋</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  tbody.innerHTML = rows || '<tr><td colspan="3" style="color:var(--text-dim);padding:12px;">ブロックが検出されませんでした</td></tr>';
+}
+
+function changeShuukeiItemVal(id, d) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.value = Math.max(0, (parseInt(el.value) || 0) + d);
+}
+
+// 「集計する」ボタン：1段分×段数で合計を表示
+function calcShuukeiTotal() {
+  const dan = shuukeiDan;
+  const tbody = document.getElementById('shuukei-result-tbody');
+  const rows = SHUUKEI_ITEMS.map(item => {
+    const el = document.getElementById('si-' + item.key);
+    if (!el) return '';
+    const perDan = parseInt(el.value) || 0;
+    if (perDan === 0) return '';
+    const total = perDan * dan;
+    return `<tr>
+      <td>${item.label}</td>
+      <td>${item.size}</td>
+      <td class="shuukei-result-val">${total}</td>
+    </tr>`;
+  }).join('');
+
+  tbody.innerHTML = rows || '<tr><td colspan="3" style="color:var(--text-dim);">数量が0です</td></tr>';
+  document.getElementById('shuukei-dan-label').textContent = dan + '段分';
+  document.getElementById('shuukei-result-section').style.display = 'block';
+}
+
+// ===== バックアップ =====
+function exportBackup() {
+  const drawings = getSavedDrawings();
+  const progress = getProgData();
+  const backup = { version: 1, date: new Date().toISOString(), drawings, progress };
+  const json = JSON.stringify(backup, null, 2);
+  const blob = new Blob([json], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = new Date().toLocaleDateString('ja-JP').replace(/\//g, '-');
+  a.href = url;
+  a.download = '足場プランナー_バックアップ_' + dateStr + '.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importBackup(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const backup = JSON.parse(e.target.result);
+      if (!backup.version || !backup.drawings) throw new Error();
+      const existing = getSavedDrawings();
+      const existingTitles = existing.map(d => d.title);
+      let added = 0;
+      backup.drawings.forEach(d => {
+        if (!existingTitles.includes(d.title)) { existing.unshift(d); added++; }
+      });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
+      if (backup.progress) {
+        const ep = getProgData();
+        Object.entries(backup.progress).forEach(([name, data]) => { if (!ep[name]) ep[name] = data; });
+        saveProgData(ep);
+      }
+      buildSavedList();
+      const msg = document.getElementById('import-msg');
+      msg.style.display='block'; msg.style.background='#22cc8822'; msg.style.border='1px solid #22cc88'; msg.style.color='#22cc88';
+      msg.textContent = '✅ 読み込み完了！図面' + added + '件を追加しました。';
+      setTimeout(() => { msg.style.display='none'; }, 4000);
+    } catch(e) {
+      const msg = document.getElementById('import-msg');
+      msg.style.display='block'; msg.style.background='#e03e3e22'; msg.style.border='1px solid var(--danger)'; msg.style.color='var(--danger)';
+      msg.textContent = '❌ 読み込みに失敗しました。正しいバックアップファイルを選んでください。';
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ===== お問い合わせ =====
+const FORMSPREE_ID = 'xrergrdp';
+
+async function submitContact() {
+  const type    = document.getElementById('contact-type').value;
+  const name    = document.getElementById('contact-name').value.trim();
+  const message = document.getElementById('contact-message').value.trim();
+
+  if (!type)    { alert('お問い合わせの種類を選択してください'); return; }
+  if (!message) { alert('お問い合わせ内容を入力してください'); return; }
+
+  document.getElementById('contact-error').style.display = 'none';
+  const btn = document.querySelector('#contact-form-wrap .save-btn');
+  btn.textContent = '送信中...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(`https://formspree.io/f/${FORMSPREE_ID}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({
+        種類: type,
+        名前: name || '匿名',
+        内容: message,
+      })
+    });
+    if (res.ok) {
+      document.getElementById('contact-form-wrap').style.display = 'none';
+      document.getElementById('contact-done').style.display = 'block';
+    } else {
+      throw new Error('送信失敗');
+    }
+  } catch(e) {
+    document.getElementById('contact-error').style.display = 'block';
+    btn.textContent = '送信する';
+    btn.disabled = false;
+  }
+}
+
+function resetContact() {
+  document.getElementById('contact-type').value    = '';
+  document.getElementById('contact-name').value    = '';
+  document.getElementById('contact-message').value = '';
+  document.getElementById('contact-done').style.display      = 'none';
+  document.getElementById('contact-form-wrap').style.display = 'block';
+}
+const COLOR_PALETTE = [
+  // 赤・ピンク系
+  '#ff6b6b','#ff9ee0','#ef476f','#e76f51',
+  // オレンジ・黄系
+  '#ff8c00','#f4a100','#ffd93d','#ffd166',
+  // 緑系
+  '#6bcb77','#06d6a0','#00cc88','#264653',
+  // 青・水色系
+  '#00d4ff','#00b4d8','#118ab2','#073b4c',
+  // 紫・グレー系
+  '#a259ff','#aaaaaa',
+];
+
+function openSaveTab() { openMenu(); switchTab('save'); }
+
+function openMenu() {
+  try { buildColorSettings(); } catch(e) {}
+  try { buildLegendInfo(); } catch(e) {}
+  document.getElementById('menu-overlay').classList.add('visible');
+  // 少し遅延させてからタブ切り替え（DOMが確実に表示された後）
+  setTimeout(() => { switchTab('info'); }, 10);
+}
+function closeMenu() {
+  document.getElementById('menu-overlay').classList.remove('visible');
+}
+function closeMenuOverlay(e) {
+  if (e.target === document.getElementById('menu-overlay')) closeMenu();
+}
+
+const TABS = ['color','save','calc','progress','info','updates','privacy','contact','keisan'];
+function switchTab(tab) {
+  const TABS_ALL = ['color','save','calc','progress','info','updates','privacy','contact','keisan'];
+  TABS_ALL.forEach(t => {
+    const c = document.getElementById('content-'+t);
+    const tb = document.getElementById('tab-'+t);
+    if (c) c.style.display = t===tab ? '' : 'none';
+    if (tb) tb.classList.toggle('active', t===tab);
+  });
+  if (tab==='save') {
+    buildSavedList();
+    if (currentDrawingTitle) {
+      document.getElementById('save-title').value = currentDrawingTitle;
+    }
+  }
+  if (tab==='progress') { buildProgSelect(); selectSite(); }
+}
+
+const COLOR_GROUPS = [
+  { label: '赤・ピンク', colors: ['#ff6b6b','#ff9ee0','#ef476f','#e76f51'] },
+  { label: 'オレンジ・黄', colors: ['#ff8c00','#f4a100','#ffd93d','#ffd166'] },
+  { label: '緑', colors: ['#6bcb77','#06d6a0','#00cc88','#22cc44'] },
+  { label: '青・水色', colors: ['#00d4ff','#00b4d8','#118ab2','#4477ff'] },
+  { label: '紫・グレー', colors: ['#a259ff','#cc44ff','#aaaaaa','#ffffff'] },
+];
+
+function buildColorSettings() {
+  const el = document.getElementById('color-settings');
+  el.innerHTML = SPAN_OPTIONS.map(s => {
+    const cur = SPAN_COLORS[s].line;
+    const swatches = COLOR_GROUPS.map(g =>
+      g.colors.map(c =>
+        '<div class="cswatch'+(c===cur?' sel':'')+'" style="background:'+c+';" onclick="applyColor('+s+',\''+c+'\')"></div>'
+      ).join('')
+    ).join('');
+    return '<div class="color-row-wrap">'+
+      '<div class="color-row-header">'+
+        '<div class="color-row-label">スパン '+s+'mm</div>'+
+        '<div class="color-cur-dot" style="background:'+cur+';border-color:'+cur+';">現在</div>'+
+      '</div>'+
+      '<div class="cgroup-swatches" style="flex-wrap:wrap;">'+swatches+'</div>'+
+      '</div>';
+  }).join('');
+}
+
+function buildLegendInfo() {
+  const el = document.getElementById('legend-info');
+  el.innerHTML = SPAN_OPTIONS.map(s => {
+    const c = SPAN_COLORS[s].line;
+    return '<div class="legend-info-row"><div class="legend-info-dot" style="background:'+c+'33;border-color:'+c+';"></div>スパン '+s+'mm</div>';
+  }).join('');
+}
+
+function applyColor(spanMM, color) {
+  SPAN_COLORS[spanMM] = { line: color, fill: color + '18' };
+  updateLegend();
+  buildColorSettings();
+  redraw();
+}
+
+function updateLegend() {
+  SPAN_OPTIONS.forEach(s => {
+    const c = SPAN_COLORS[s].line;
+    const dot = document.getElementById('legend-dot-' + s);
+    if (dot) { dot.style.background = c + '33'; dot.style.borderColor = c; }
+  });
+}
+
+// ===== 保存・読み込み =====
+const STORAGE_KEY = 'ashiba_drawings';
+const TEMP_KEY = 'ashiba_temp'; // 一時保存用
+let currentDrawingTitle = ''; // 現在開いている図面のタイトル
+
+function getSavedDrawings() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+  catch(e) { return []; }
+}
+
+// 一時保存（スリープ対策）
+function saveTempDrawing() {
+  if (blocks.length === 0) return;
+  try {
+    const temp = {
+      blocks: JSON.parse(JSON.stringify(blocks)),
+      memos:  JSON.parse(JSON.stringify(memos)),
+      boards: JSON.parse(JSON.stringify(boards)),
+      tankans: JSON.parse(JSON.stringify(tankans)),
+      title:  currentDrawingTitle,
+    };
+    localStorage.setItem(TEMP_KEY, JSON.stringify(temp));
+  } catch(e) {}
+}
+
+// 一時保存から復元
+function loadTempDrawing() {
+  try {
+    const temp = JSON.parse(localStorage.getItem(TEMP_KEY));
+    if (!temp || !temp.blocks || temp.blocks.length === 0) return;
+    blocks = temp.blocks;
+    memos  = temp.memos  || [];
+    boards = temp.boards || [];
+    currentDrawingTitle = temp.title || '';
+    redraw(); updateStats();
+  } catch(e) {}
+}
+
+// 定期自動一時保存（30秒ごと）
+setInterval(saveTempDrawing, 30000);
+
+// ページ非表示時にも保存
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') saveTempDrawing();
+});
+
+let _pendingOverwriteSnapshot = null;
+let _pendingOverwriteDrawings = null;
+let _pendingOverwriteIndex = -1;
+
+function saveDrawing() {
+  const title = document.getElementById('save-title').value.trim();
+  if (!title) { alert('タイトルを入力してください'); return; }
+  if (blocks.length === 0) { alert('図面が空です'); return; }
+
+  const drawings = getSavedDrawings();
+  const now = new Date();
+  const dateStr = now.getFullYear()+'/'+(now.getMonth()+1).toString().padStart(2,'0')+'/'+now.getDate().toString().padStart(2,'0');
+
+  const snapshot = {
+    title, date: dateStr,
+    blocks: JSON.parse(JSON.stringify(blocks)),
+    memos:  JSON.parse(JSON.stringify(memos)),
+    boards: JSON.parse(JSON.stringify(boards)),
+    tankans: JSON.parse(JSON.stringify(tankans)),
+  };
+
+  const existing = drawings.findIndex(d => d.title === title);
+  if (existing >= 0) {
+    // 上書き確認ダイアログを表示
+    _pendingOverwriteSnapshot = snapshot;
+    _pendingOverwriteDrawings = drawings;
+    _pendingOverwriteIndex = existing;
+    document.getElementById('overwrite-msg').textContent = '「' + title + '」はすでに保存されています。上書きしますか？';
+    document.getElementById('overwrite-dialog').style.display = 'flex';
+  } else {
+    drawings.unshift(snapshot);
+    _finishSave(drawings, title);
+  }
+}
+
+function overwriteConfirm() {
+  document.getElementById('overwrite-dialog').style.display = 'none';
+  _pendingOverwriteDrawings[_pendingOverwriteIndex] = _pendingOverwriteSnapshot;
+  _finishSave(_pendingOverwriteDrawings, _pendingOverwriteSnapshot.title);
+}
+
+function overwriteCancel() {
+  document.getElementById('overwrite-dialog').style.display = 'none';
+  _pendingOverwriteSnapshot = null;
+  _pendingOverwriteDrawings = null;
+  _pendingOverwriteIndex = -1;
+}
+
+function _finishSave(drawings, title) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(drawings));
+  currentDrawingTitle = title;
+  document.getElementById('save-title').value = title;
+  buildSavedList();
+  const btn = document.querySelector('.save-btn');
+  btn.textContent = '✓ 完了';
+  btn.style.background = '#22cc88';
+  setTimeout(() => { btn.textContent = '保存'; btn.style.background = ''; }, 1500);
+}
+
+function loadDrawingByIndex(i) {
+  const drawings = getSavedDrawings();
+  const d = drawings[i];
+  if (!d) return;
+  saveHistory();
+  blocks = JSON.parse(JSON.stringify(d.blocks || []));
+  memos  = JSON.parse(JSON.stringify(d.memos  || []));
+  boards = JSON.parse(JSON.stringify(d.boards || []));
+  tankans = JSON.parse(JSON.stringify(d.tankans || []));
+  currentDrawingTitle = d.title || '';
+  document.getElementById('save-title').value = currentDrawingTitle;
+  closeMenu();
+  redraw();
+  updateStats();
+}
+
+function deleteDrawingByIndex(i) {
+  const drawings = getSavedDrawings();
+  drawings.splice(i, 1);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(drawings));
+  buildSavedList();
+}
+
+function confirmDelete(i) {
+  const drawings = getSavedDrawings();
+  const item = document.getElementById('saved-item-' + i);
+  if (!item) return;
+  item.innerHTML =
+    '<div class="saved-item-info"><div class="saved-item-title" style="color:var(--danger);">「'+drawings[i].title+'」を削除しますか？</div></div>'+
+    '<div class="saved-item-btns">'+
+    '<button class="del-btn" style="background:var(--danger);color:#fff;" onclick="deleteDrawingByIndex('+i+')">削除する</button>'+
+    '<button class="load-btn" style="background:var(--surface2);color:var(--text);" onclick="buildSavedList()">キャンセル</button>'+
+    '</div>';
+}
+
+function buildSavedList() {
+  const drawings = getSavedDrawings();
+  const el = document.getElementById('saved-list');
+  if (!el) return;
+  if (drawings.length === 0) {
+    el.innerHTML = '<div class="saved-empty">保存された図面はありません</div>';
+    return;
+  }
+  el.innerHTML = drawings.map((d, i) =>
+    '<div class="saved-item" id="saved-item-'+i+'">'+
+    '<div class="saved-item-info">'+
+    '<div class="saved-item-title">'+d.title+'</div>'+
+    '<div class="saved-item-date">📅 '+d.date+'</div>'+
+    '<div class="saved-item-blocks">🧱 '+d.blocks.length+' ブロック</div>'+
+    '</div>'+
+    '<div class="saved-item-btns">'+
+    '<button class="load-btn" onclick="loadDrawingByIndex('+i+')">読込</button>'+
+    '<button class="del-btn" onclick="confirmDelete('+i+')">削除</button>'+
+    '</div></div>'
+  ).join('');
+}
+
+// ===== 計算機 =====
+let kDisplay = '0';
+let kPrev    = null;
+let kOp      = null;
+let kReset   = false;
+
+function kUpdate() {
+  const n = parseFloat(kDisplay);
+  document.getElementById('keisan-display').textContent =
+    isFinite(n) ? n.toLocaleString('ja-JP', {maximumFractionDigits:10}) : 'エラー';
+}
+
+function keisanNum(n) {
+  if (kReset) { kDisplay = n; kReset = false; }
+  else kDisplay = kDisplay === '0' ? n : kDisplay + n;
+  kUpdate();
+}
+
+function keisanDot() {
+  if (kReset) { kDisplay = '0.'; kReset = false; }
+  else if (!kDisplay.includes('.')) kDisplay += '.';
+  kUpdate();
+}
+
+function keisanOp(op) {
+  kPrev  = parseFloat(kDisplay);
+  kOp    = op;
+  kReset = true;
+  document.getElementById('keisan-sub').textContent =
+    kPrev.toLocaleString('ja-JP',{maximumFractionDigits:10}) + ' ' + {'+':'＋','-':'−','*':'×','/':'÷'}[op];
+}
+
+function keisanEqual() {
+  if (kOp === null || kPrev === null) return;
+  const cur = parseFloat(kDisplay);
+  let result;
+  if (kOp==='+') result = kPrev + cur;
+  else if (kOp==='-') result = kPrev - cur;
+  else if (kOp==='*') result = kPrev * cur;
+  else if (kOp==='/') result = cur === 0 ? NaN : kPrev / cur;
+  kDisplay = isFinite(result) ? String(result) : 'NaN';
+  kOp = null; kPrev = null; kReset = true;
+  document.getElementById('keisan-sub').textContent = '';
+  kUpdate();
+}
+
+function keisanClear() {
+  kDisplay='0'; kPrev=null; kOp=null; kReset=false;
+  document.getElementById('keisan-sub').textContent='';
+  kUpdate();
+}
+
+function keisanSign() {
+  kDisplay = String(parseFloat(kDisplay) * -1);
+  kUpdate();
+}
+
+function keisanPercent() {
+  kDisplay = String(parseFloat(kDisplay) / 100);
+  kUpdate();
+}
+
+window.addEventListener('resize',init);
+init();
+loadTempDrawing();
+// 全メニュータブを確実に非表示に初期化
+['color','save','calc','progress','info','updates','privacy','contact','keisan'].forEach(t => {
+  const el = document.getElementById('content-'+t);
+  if (el) el.style.display = 'none';
+});
+</script>
+</body>
+</html>
